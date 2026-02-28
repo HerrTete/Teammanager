@@ -5,72 +5,187 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Teammanager</title>
   <style>
+    *, *::before, *::after { box-sizing: border-box; }
     body {
       font-family: Arial, sans-serif;
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
       min-height: 100vh;
       margin: 0;
+      padding: 2rem 1rem;
       background-color: #f0f2f5;
     }
     .container {
+      width: 100%;
+      max-width: 480px;
       text-align: center;
       padding: 2rem;
       background: white;
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
-    h1 {
-      color: #333;
-    }
-    p {
-      color: #666;
-    }
-    .db-status {
-      margin-top: 1rem;
+    h1 { color: #333; margin-top: 0; }
+    p { color: #666; }
+    .status-bar {
+      margin: 0.5rem 0 1.5rem;
       padding: 0.75rem 1rem;
       border-radius: 6px;
       font-weight: bold;
     }
-    .db-status.ok {
-      background-color: #d4edda;
-      color: #155724;
+    .status-bar.ok   { background-color: #d4edda; color: #155724; }
+    .status-bar.error{ background-color: #f8d7da; color: #721c24; }
+    .status-bar.loading { background-color: #fff3cd; color: #856404; }
+
+    /* Auth status banner */
+    #auth-banner {
+      margin-bottom: 1.5rem;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      background: #e8f0fe;
+      color: #1a3a6e;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
-    .db-status.error {
-      background-color: #f8d7da;
-      color: #721c24;
+
+    /* Tabs */
+    .tabs { display: flex; margin-bottom: 1rem; border-bottom: 2px solid #e0e0e0; }
+    .tab-btn {
+      flex: 1;
+      padding: 0.6rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      color: #666;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
     }
-    .db-status.loading {
-      background-color: #fff3cd;
-      color: #856404;
+    .tab-btn.active { color: #1a73e8; border-bottom-color: #1a73e8; font-weight: bold; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Forms */
+    .form-group { margin-bottom: 1rem; text-align: left; }
+    label { display: block; margin-bottom: 0.3rem; font-size: 0.9rem; color: #444; }
+    input[type="text"], input[type="email"], input[type="password"], input[type="number"] {
+      width: 100%;
+      padding: 0.55rem 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1rem;
     }
+    input:focus { outline: 2px solid #1a73e8; border-color: transparent; }
+
+    .captcha-row { display: flex; gap: 0.5rem; align-items: center; }
+    .captcha-question { flex: 1; font-weight: bold; color: #333; }
+    .captcha-row input { width: 80px; }
+
+    button[type="submit"] {
+      width: 100%;
+      padding: 0.65rem;
+      background: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 0.5rem;
+    }
+    button[type="submit"]:hover { background: #1558b0; }
+
+    .msg {
+      margin-top: 0.75rem;
+      padding: 0.6rem;
+      border-radius: 5px;
+      font-size: 0.9rem;
+    }
+    .msg.ok    { background: #d4edda; color: #155724; }
+    .msg.error { background: #f8d7da; color: #721c24; }
+    .msg.hidden { display: none; }
+
+    #logout-btn {
+      background: none;
+      border: 1px solid #1a3a6e;
+      color: #1a3a6e;
+      padding: 0.3rem 0.75rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    #logout-btn:hover { background: #d0daf5; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Hello World!</h1>
-    <p>Teammanager ist online.</p>
-    <div id="db-status" class="db-status loading">Datenbankverbindung wird geprüft…</div>
+    <h1>Teammanager</h1>
+    <p>Willkommen beim Teammanager.</p>
+
+    <!-- Auth status banner -->
+    <div id="auth-banner">
+      <span id="auth-banner-text">Anmeldestatus wird geprüft…</span>
+      <button id="logout-btn" style="display:none">Abmelden</button>
+    </div>
+
+    <!-- Auth forms (hidden when logged in) -->
+    <div id="auth-forms">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="login">Anmelden</button>
+        <button class="tab-btn" data-tab="register">Registrieren</button>
+      </div>
+
+      <!-- Login -->
+      <div id="tab-login" class="tab-panel active">
+        <form id="login-form">
+          <div class="form-group">
+            <label for="login-user">Benutzername</label>
+            <input id="login-user" type="text" autocomplete="username" required />
+          </div>
+          <div class="form-group">
+            <label for="login-pw">Passwort</label>
+            <input id="login-pw" type="password" autocomplete="current-password" required />
+          </div>
+          <button type="submit">Anmelden</button>
+        </form>
+        <div id="login-msg" class="msg hidden"></div>
+      </div>
+
+      <!-- Register -->
+      <div id="tab-register" class="tab-panel">
+        <form id="register-form">
+          <div class="form-group">
+            <label for="reg-user">Benutzername (3–50 Zeichen)</label>
+            <input id="reg-user" type="text" autocomplete="username" required minlength="3" maxlength="50" />
+          </div>
+          <div class="form-group">
+            <label for="reg-email">E-Mail</label>
+            <input id="reg-email" type="email" autocomplete="email" required />
+          </div>
+          <div class="form-group">
+            <label for="reg-pw">Passwort (mindestens 8 Zeichen)</label>
+            <input id="reg-pw" type="password" autocomplete="new-password" required minlength="8" />
+          </div>
+          <div class="form-group">
+            <label>Sicherheitsfrage (Anti-Bot)</label>
+            <div class="captcha-row">
+              <span class="captcha-question" id="captcha-question">…</span>
+              <input id="captcha-answer" type="number" placeholder="Antwort" required />
+              <button type="button" id="captcha-reload" title="Neue Aufgabe">↺</button>
+            </div>
+          </div>
+          <button type="submit">Registrieren</button>
+        </form>
+        <div id="register-msg" class="msg hidden"></div>
+      </div>
+    </div>
+
+    <!-- DB status -->
+    <div id="db-status" class="status-bar loading">Datenbankverbindung wird geprüft…</div>
   </div>
-  <script>
-    fetch('/api/db-status')
-      .then(res => res.json())
-      .then(data => {
-        const el = document.getElementById('db-status');
-        if (data.status === 'ok') {
-          el.className = 'db-status ok';
-          el.textContent = '✔ ' + data.message;
-        } else {
-          el.className = 'db-status error';
-          el.textContent = '✘ Datenbankfehler: ' + data.message + (data.detail ? ' (' + data.detail + ')' : '');
-        }
-      })
-      .catch(err => {
-        const el = document.getElementById('db-status');
-        el.className = 'db-status error';
-        el.textContent = '✘ Verbindung zum Server fehlgeschlagen: ' + err.message;
-      });
-  </script>
+
+  <script src="app.js"></script>
 </body>
 </html>
