@@ -1,0 +1,16 @@
+{
+  "name": "teammanager",
+  "version": "1.0.0",
+  "description": "Teammanager Web Service",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
