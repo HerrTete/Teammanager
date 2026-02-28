@@ -150,5 +150,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('logout-btn').addEventListener('click', logout);
   document.getElementById('captcha-reload').addEventListener('click', loadCaptcha);
 
-  loadCsrfToken().then(() => checkAuthStatus());
+  checkAuthStatus();
+  loadCsrfToken().catch(err => console.error('CSRF token load failed:', err));
 });

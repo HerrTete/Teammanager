@@ -279,7 +279,9 @@ app.get('/api/auth/status', (req, res) => {
 });
 
 Promise.all([
-  initDb(),
+  initDb().catch(err => {
+    console.error('DB initialization failed, server starting in degraded mode (database features unavailable):', err.message);
+  }),
   bcrypt.hash('dummy-placeholder', BCRYPT_SALT_ROUNDS).then(h => { DUMMY_HASH = h; }),
 ]).then(() => {
   app.listen(PORT, () => {
