@@ -27,12 +27,50 @@
     p {
       color: #666;
     }
+    .db-status {
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    .db-status.ok {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .db-status.error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .db-status.loading {
+      background-color: #fff3cd;
+      color: #856404;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Hello World!</h1>
     <p>Teammanager ist online.</p>
+    <div id="db-status" class="db-status loading">Datenbankverbindung wird geprüft…</div>
   </div>
+  <script>
+    fetch('/api/db-status')
+      .then(res => res.json())
+      .then(data => {
+        const el = document.getElementById('db-status');
+        if (data.status === 'ok') {
+          el.className = 'db-status ok';
+          el.textContent = '✔ ' + data.message;
+        } else {
+          el.className = 'db-status error';
+          el.textContent = '✘ Datenbankfehler: ' + data.message;
+        }
+      })
+      .catch(err => {
+        const el = document.getElementById('db-status');
+        el.className = 'db-status error';
+        el.textContent = '✘ Verbindung zum Server fehlgeschlagen: ' + err.message;
+      });
+  </script>
 </body>
 </html>
