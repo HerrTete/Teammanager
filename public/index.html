@@ -63,7 +63,7 @@
           el.textContent = '✔ ' + data.message;
         } else {
           el.className = 'db-status error';
-          el.textContent = '✘ Datenbankfehler: ' + data.message;
+          el.textContent = '✘ Datenbankfehler: ' + data.message + (data.detail ? ' (' + data.detail + ')' : '');
         }
       })
       .catch(err => {
