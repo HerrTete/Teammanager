@@ -72,7 +72,13 @@ function switchTab(tab) {
   });
   document.getElementById('tab-login').classList.toggle('active', tab === 'login');
   document.getElementById('tab-register').classList.toggle('active', tab === 'register');
-  if (tab === 'register') loadCaptcha();
+  if (tab === 'register') {
+    // Reset verification state when switching to register tab
+    document.getElementById('register-form').style.display = '';
+    document.getElementById('verify-section').style.display = 'none';
+    document.getElementById('verify-msg').className = 'msg hidden';
+    loadCaptcha();
+  }
 }
 
 function showMsg(id, text, type) {
@@ -118,15 +124,45 @@ function doRegister(e) {
   })
     .then(r => r.json())
     .then(data => {
-      if (data.status === 'ok') {
-        showMsg('register-msg', '✔ ' + data.message + ' Sie können sich jetzt anmelden.', 'ok');
-        loadCaptcha();
+      if (data.status === 'pending') {
+        showMsg('register-msg', '✔ ' + data.message, 'ok');
+        document.getElementById('register-form').style.display = 'none';
+        document.getElementById('verify-section').style.display = '';
+        document.getElementById('verify-code').value = '';
+        document.getElementById('verify-code').focus();
       } else {
         showMsg('register-msg', '✘ ' + data.message, 'error');
         loadCaptcha();
       }
     })
     .catch(() => { showMsg('register-msg', '✘ Verbindungsfehler.', 'error'); loadCaptcha(); });
+}
+
+// --- Verify Email ---
+function doVerifyEmail(e) {
+  e.preventDefault();
+  const code = document.getElementById('verify-code').value.trim();
+  fetch('/api/auth/verify-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+    body: JSON.stringify({ code }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        showMsg('verify-msg', '✔ ' + data.message + ' Sie können sich jetzt anmelden.', 'ok');
+        document.getElementById('verify-form').style.display = 'none';
+      } else {
+        showMsg('verify-msg', '✘ ' + data.message, 'error');
+        if (data.errorCode === 'CODE_EXPIRED') {
+          // Code expired – go back to registration form
+          document.getElementById('verify-section').style.display = 'none';
+          document.getElementById('register-form').style.display = '';
+          loadCaptcha();
+        }
+      }
+    })
+    .catch(() => showMsg('verify-msg', '✘ Verbindungsfehler.', 'error'));
 }
 
 // --- Logout ---
@@ -147,6 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('login-form').addEventListener('submit', doLogin);
   document.getElementById('register-form').addEventListener('submit', doRegister);
+  document.getElementById('verify-form').addEventListener('submit', doVerifyEmail);
   document.getElementById('logout-btn').addEventListener('click', logout);
   document.getElementById('captcha-reload').addEventListener('click', loadCaptcha);
 

@@ -8,6 +8,7 @@ const bcrypt = require('bcrypt');
 const session = require('express-session');
 const { rateLimit } = require('express-rate-limit');
 const helmet = require('helmet');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,6 +16,40 @@ const PORT = process.env.PORT || 3000;
 const BCRYPT_SALT_ROUNDS = 12;
 // Precomputed dummy hash for timing-safe user-enumeration prevention (avoid bcrypt.hash per request)
 let DUMMY_HASH;
+
+// Email verification code TTL in milliseconds (10 minutes)
+const EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
+
+// Nodemailer transporter (SMTP credentials from environment variables).
+// If SMTP_HOST is not set, a development-only test-account transport is used
+// that logs the message to the console instead of actually sending it.
+let mailTransporter;
+async function getMailTransporter() {
+  if (mailTransporter) return mailTransporter;
+  if (process.env.SMTP_HOST) {
+    mailTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+  } else {
+    // Dev/test fallback: log to console
+    mailTransporter = {
+      sendMail: async (opts) => {
+        console.log('[DEV] E-Mail would be sent:');
+        console.log('  To:', opts.to);
+        console.log('  Subject:', opts.subject);
+        console.log('  Text:', opts.text);
+        return { messageId: 'dev-only' };
+      },
+    };
+  }
+  return mailTransporter;
+}
 const SESSION_SECRET = process.env.SESSION_SECRET || (() => {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('SESSION_SECRET environment variable must be set in production');
@@ -193,14 +228,80 @@ app.post('/api/auth/register', authLimiter, validateCsrf, async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-    await connection.execute(
-      'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
-      [cleanUsername, cleanEmail, hash]
-    );
 
-    return res.status(201).json({ status: 'ok', message: 'Registrierung erfolgreich.' });
+    // Generate a 6-digit numeric verification code
+    const code = String(crypto.randomInt(100000, 1000000));
+    const expiry = Date.now() + EMAIL_CODE_TTL_MS;
+
+    // Store pending registration in session
+    req.session.pendingRegistration = { username: cleanUsername, email: cleanEmail, passwordHash: hash, code, expiry };
+
+    const transporter = await getMailTransporter();
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || 'Teammanager <no-reply@teammanager.local>',
+      to: cleanEmail,
+      subject: 'Teammanager – E-Mail-Verifizierung',
+      text: `Hallo ${cleanUsername},\n\nIhr Verifizierungscode lautet: ${code}\n\nDer Code ist 10 Minuten gültig.\n\nFalls Sie sich nicht registriert haben, ignorieren Sie diese E-Mail.`,
+    });
+
+    return res.status(200).json({ status: 'pending', message: 'Verifizierungscode wurde an Ihre E-Mail-Adresse gesendet.' });
   } catch (err) {
     console.error('Register error:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Interner Serverfehler.' });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// --- VERIFY EMAIL ---
+app.post('/api/auth/verify-email', authLimiter, validateCsrf, async (req, res) => {
+  const { code } = req.body || {};
+  const pending = req.session.pendingRegistration;
+
+  if (!pending) {
+    return res.status(400).json({ status: 'error', message: 'Keine ausstehende Registrierung gefunden. Bitte erneut registrieren.' });
+  }
+
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({ status: 'error', message: 'Verifizierungscode fehlt.' });
+  }
+
+  if (Date.now() > pending.expiry) {
+    delete req.session.pendingRegistration;
+    return res.status(400).json({ status: 'error', errorCode: 'CODE_EXPIRED', message: 'Der Verifizierungscode ist abgelaufen. Bitte erneut registrieren.' });
+  }
+
+  // Timing-safe code comparison to prevent timing attacks
+  const submittedCode = Buffer.from(code.trim().padEnd(6, '\0'));
+  const expectedCode = Buffer.from(pending.code.padEnd(6, '\0'));
+  const codeMatch = submittedCode.length === expectedCode.length &&
+    crypto.timingSafeEqual(submittedCode, expectedCode);
+  if (!codeMatch) {
+    return res.status(400).json({ status: 'error', message: 'Ungültiger Verifizierungscode.' });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    // Check again that username/email are still available
+    const [rows] = await connection.execute(
+      'SELECT id FROM users WHERE username = ? OR email = ?',
+      [pending.username, pending.email]
+    );
+    if (rows.length > 0) {
+      delete req.session.pendingRegistration;
+      return res.status(409).json({ status: 'error', message: 'Benutzername oder E-Mail bereits vergeben.' });
+    }
+
+    await connection.execute(
+      'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
+      [pending.username, pending.email, pending.passwordHash]
+    );
+
+    delete req.session.pendingRegistration;
+    return res.status(201).json({ status: 'ok', message: 'E-Mail verifiziert. Registrierung erfolgreich.' });
+  } catch (err) {
+    console.error('Verify email error:', err.message);
     return res.status(500).json({ status: 'error', message: 'Interner Serverfehler.' });
   } finally {
     if (connection) connection.release();

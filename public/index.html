@@ -179,6 +179,18 @@
           <button type="submit">Registrieren</button>
         </form>
         <div id="register-msg" class="msg hidden"></div>
+
+        <!-- Email verification step (shown after registration form is submitted) -->
+        <div id="verify-section" style="display:none; margin-top:1rem;">
+          <form id="verify-form">
+            <div class="form-group">
+              <label for="verify-code">Verifizierungscode (aus der E-Mail)</label>
+              <input id="verify-code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required placeholder="6-stelliger Code" />
+            </div>
+            <button type="submit">Code bestätigen</button>
+          </form>
+          <div id="verify-msg" class="msg hidden"></div>
+        </div>
       </div>
     </div>
 
