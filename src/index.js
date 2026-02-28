@@ -13,6 +13,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const BCRYPT_SALT_ROUNDS = 12;
+// Precomputed dummy hash for timing-safe user-enumeration prevention (avoid bcrypt.hash per request)
+let DUMMY_HASH;
 const SESSION_SECRET = process.env.SESSION_SECRET || (() => {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('SESSION_SECRET environment variable must be set in production');
@@ -61,9 +63,16 @@ async function initDb() {
 app.use(helmet());
 const SESSION_COOKIE_NAME = 'teammanager.sid';
 
+// Required for secure cookies to work correctly behind a TLS-terminating reverse proxy in production
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// NOTE: MemoryStore is used by default and is not suitable for production.
+// Configure a persistent store (e.g. connect-redis or express-mysql-session) for production deployments.
 app.use(session({
   name: SESSION_COOKIE_NAME,
   secret: SESSION_SECRET,
@@ -206,7 +215,7 @@ app.post('/api/auth/login', authLimiter, validateCsrf, async (req, res) => {
     );
 
     if (rows.length === 0) {
-      await bcrypt.hash('dummy', BCRYPT_SALT_ROUNDS); // timing-safe: avoid user enumeration
+      await bcrypt.compare(password, DUMMY_HASH); // timing-safe: avoid user enumeration
       return res.status(401).json({ status: 'error', message: 'Ungültiger Benutzername oder Passwort.' });
     }
 
@@ -223,7 +232,14 @@ app.post('/api/auth/login', authLimiter, validateCsrf, async (req, res) => {
       }
       req.session.userId = user.id;
       req.session.username = user.username;
-      return res.json({ status: 'ok', message: 'Anmeldung erfolgreich.', username: user.username });
+      req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          console.error('Session save error:', saveErr);
+          return res.status(500).json({ status: 'error', message: 'Interner Serverfehler.' });
+        }
+        return res.json({ status: 'ok', message: 'Anmeldung erfolgreich.', username: user.username, csrfToken: req.session.csrfToken });
+      });
     });
   } catch (err) {
     console.error('Login error:', err.message);
@@ -253,7 +269,10 @@ app.get('/api/auth/status', (req, res) => {
   return res.json({ loggedIn: false });
 });
 
-initDb().then(() => {
+Promise.all([
+  initDb(),
+  bcrypt.hash('dummy-placeholder', BCRYPT_SALT_ROUNDS).then(h => { DUMMY_HASH = h; }),
+]).then(() => {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });

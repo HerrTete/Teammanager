@@ -94,6 +94,7 @@ function doLogin(e) {
     .then(r => r.json())
     .then(data => {
       if (data.status === 'ok') {
+        if (data.csrfToken) csrfToken = data.csrfToken;
         showMsg('login-msg', '✔ ' + data.message, 'ok');
         checkAuthStatus();
       } else {
