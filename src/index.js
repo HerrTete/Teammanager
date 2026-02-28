@@ -52,6 +52,7 @@ async function initDb() {
     console.log('Database schema initialized.');
   } catch (err) {
     console.error('DB init error:', err.message);
+    throw err;
   } finally {
     if (connection) connection.release();
   }
