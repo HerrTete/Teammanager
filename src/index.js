@@ -8,10 +8,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const pool = mysql.createPool({
-  host: 'localhost',
+  host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
   user: process.env.DB_USER,
   password: process.env.DB_PW,
   database: process.env.DB_NAME,
+});
+
+pool.on('error', (err) => {
+  console.error('DB pool error:', err.message);
 });
 
 app.use(express.static(path.join(__dirname, '..', 'public')));
