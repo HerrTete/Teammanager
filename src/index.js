@@ -78,10 +78,19 @@ app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
+  // In production, tell express-session to read X-Forwarded-Proto directly so
+  // it can correctly determine whether the connection is HTTPS when behind a
+  // TLS-terminating reverse proxy (e.g. nginx) even if the proxy does not set
+  // the header that Express itself reads for req.secure.
+  proxy: process.env.NODE_ENV === 'production',
   cookie: {
     httpOnly: true,
     sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production',
+    // 'auto' sets the Secure flag when the connection is HTTPS and omits it
+    // when it is HTTP. This ensures the cookie is *always* sent to the browser
+    // (critical for session continuity) while still marking it Secure whenever
+    // the transport actually is encrypted.
+    secure: 'auto',
     maxAge: SESSION_MAX_AGE_MS,
   },
 }));
