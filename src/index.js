@@ -226,7 +226,14 @@ app.post('/api/auth/register', authLimiter, validateCsrf, async (req, res) => {
     if (rows.length > 0) {
       return res.status(409).json({ status: 'error', message: 'Benutzername oder E-Mail bereits vergeben.' });
     }
+  } catch (err) {
+    console.error('Register DB error:', err.message);
+    return res.status(500).json({ status: 'error', message: 'Datenbankfehler. Bitte versuchen Sie es später erneut.' });
+  } finally {
+    if (connection) connection.release();
+  }
 
+  try {
     const hash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
     // Generate a 6-digit numeric verification code
@@ -243,14 +250,13 @@ app.post('/api/auth/register', authLimiter, validateCsrf, async (req, res) => {
       subject: 'Teammanager – E-Mail-Verifizierung',
       text: `Hallo ${cleanUsername},\n\nIhr Verifizierungscode lautet: ${code}\n\nDer Code ist 10 Minuten gültig.\n\nFalls Sie sich nicht registriert haben, ignorieren Sie diese E-Mail.`,
     });
-
-    return res.status(200).json({ status: 'pending', message: 'Verifizierungscode wurde an Ihre E-Mail-Adresse gesendet.' });
   } catch (err) {
-    console.error('Register error:', err.message);
-    return res.status(500).json({ status: 'error', message: 'Interner Serverfehler.' });
-  } finally {
-    if (connection) connection.release();
+    console.error('Register email error:', err.message);
+    delete req.session.pendingRegistration;
+    return res.status(500).json({ status: 'error', message: 'Verifizierungs-E-Mail konnte nicht gesendet werden. Bitte überprüfen Sie Ihre E-Mail-Adresse oder versuchen Sie es später erneut.' });
   }
+
+  return res.status(200).json({ status: 'pending', message: 'Verifizierungscode wurde an Ihre E-Mail-Adresse gesendet.' });
 });
 
 // --- VERIFY EMAIL ---
@@ -302,7 +308,7 @@ app.post('/api/auth/verify-email', authLimiter, validateCsrf, async (req, res) =
     return res.status(201).json({ status: 'ok', message: 'E-Mail verifiziert. Registrierung erfolgreich.' });
   } catch (err) {
     console.error('Verify email error:', err.message);
-    return res.status(500).json({ status: 'error', message: 'Interner Serverfehler.' });
+    return res.status(500).json({ status: 'error', message: 'Datenbankfehler. Bitte versuchen Sie es später erneut.' });
   } finally {
     if (connection) connection.release();
   }
