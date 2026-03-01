@@ -117,6 +117,123 @@
       font-size: 0.85rem;
     }
     #logout-btn:hover { background: #d0daf5; }
+
+    /* === SPA Layout === */
+    .container.app-mode { max-width: 960px; }
+    #app-nav {
+      display: flex; gap: 0.25rem; flex-wrap: wrap;
+      margin-bottom: 1rem; padding: 0.5rem;
+      background: #1a73e8; border-radius: 6px;
+    }
+    .nav-btn {
+      background: none; border: none; color: white;
+      padding: 0.5rem 0.75rem; cursor: pointer;
+      border-radius: 4px; font-size: 0.9rem; position: relative;
+    }
+    .nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,0.2); }
+    .nav-club-name {
+      margin-left: auto; color: rgba(255,255,255,0.8);
+      font-size: 0.85rem; align-self: center;
+    }
+    #club-tabs {
+      display: flex; gap: 0.25rem; margin-bottom: 1rem; overflow-x: auto;
+    }
+    #club-tabs button {
+      padding: 0.4rem 0.75rem; border: 1px solid #ddd;
+      background: #f8f9fa; border-radius: 4px 4px 0 0;
+      cursor: pointer; white-space: nowrap; font-size: 0.9rem;
+    }
+    #club-tabs button.active { background: #1a73e8; color: white; border-color: #1a73e8; }
+    .app-view { display: none; text-align: left; }
+    .app-view.active { display: block; }
+    .card {
+      background: #f8f9fa; border: 1px solid #e0e0e0;
+      border-radius: 6px; padding: 1rem; margin-bottom: 1rem;
+    }
+    .card h3 { margin-top: 0; color: #333; }
+    .card-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;
+    }
+    .item-list { list-style: none; padding: 0; margin: 0; }
+    .item-list li {
+      padding: 0.5rem 0.75rem; border-bottom: 1px solid #eee;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .item-list li:last-child { border-bottom: none; }
+    .badge {
+      display: inline-block; background: #e74c3c; color: white;
+      border-radius: 50%; min-width: 18px; height: 18px;
+      font-size: 0.7rem; line-height: 18px; text-align: center; margin-left: 4px;
+    }
+    .badge.hidden { display: none; }
+    .btn {
+      display: inline-block; padding: 0.4rem 0.75rem;
+      border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem;
+    }
+    .btn-primary { background: #1a73e8; color: white; }
+    .btn-primary:hover { background: #1558b0; }
+    .btn-secondary { background: #6c757d; color: white; }
+    .btn-secondary:hover { background: #545b62; }
+    .btn-danger { background: #dc3545; color: white; }
+    .btn-danger:hover { background: #c82333; }
+    .btn-sm { padding: 0.2rem 0.5rem; font-size: 0.8rem; }
+    .section-header {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 0.75rem;
+    }
+    .section-header h2, .section-header h3 { margin: 0; }
+    .app-form textarea, .app-form select,
+    input[type="datetime-local"] {
+      width: 100%; padding: 0.55rem 0.75rem;
+      border: 1px solid #ccc; border-radius: 5px;
+      font-size: 1rem; font-family: inherit;
+    }
+    .app-form textarea { resize: vertical; }
+    .attendance-item {
+      display: flex; justify-content: space-between;
+      align-items: center; padding: 0.4rem 0; border-bottom: 1px solid #eee;
+    }
+    .attendance-accepted { color: #28a745; }
+    .attendance-declined { color: #dc3545; }
+    .attendance-pending { color: #ffc107; }
+    .message-item {
+      padding: 0.75rem; border: 1px solid #e0e0e0;
+      border-radius: 6px; margin-bottom: 0.5rem; cursor: pointer;
+    }
+    .message-item:hover { background: #f0f2f5; }
+    .msg-subject { font-weight: bold; color: #333; }
+    .msg-meta { font-size: 0.8rem; color: #888; margin-top: 0.25rem; }
+    .notif-item { padding: 0.5rem 0.75rem; border-bottom: 1px solid #eee; }
+    .notif-item.unread { background: #e8f0fe; font-weight: 500; }
+    .club-logo { max-width: 120px; max-height: 120px; border-radius: 8px; margin-bottom: 0.5rem; }
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: flex;
+      justify-content: center; align-items: center; z-index: 1000;
+    }
+    .modal {
+      background: white; border-radius: 8px; padding: 1.5rem;
+      width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto;
+    }
+    .modal h3 { margin-top: 0; }
+    .md-preview {
+      background: #f8f9fa; border: 1px solid #ddd;
+      border-radius: 4px; padding: 0.75rem; min-height: 60px;
+    }
+    .photos-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.5rem;
+    }
+    .photos-grid img {
+      width: 100%; height: 80px; object-fit: cover;
+      border-radius: 4px; cursor: pointer;
+    }
+    .rsvp-buttons { display: flex; gap: 0.5rem; margin: 1rem 0; }
+    @media (max-width: 600px) {
+      .container.app-mode { padding: 0.75rem; }
+      #app-nav { flex-direction: column; }
+      .card-grid { grid-template-columns: 1fr; }
+      .section-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+    }
   </style>
 </head>
 <body>
@@ -191,6 +308,196 @@
           </form>
           <div id="verify-msg" class="msg hidden"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- SPA App (shown after login) -->
+    <div id="app-main" style="display:none">
+      <nav id="app-nav">
+        <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+        <button class="nav-btn" data-view="club">Vereinsverwaltung</button>
+        <button class="nav-btn" data-view="messages">Nachrichten <span id="msg-badge" class="badge hidden">0</span></button>
+        <button class="nav-btn" data-view="notifications">Benachrichtigungen <span id="notif-badge" class="badge hidden">0</span></button>
+        <span class="nav-club-name" id="nav-club-name"></span>
+      </nav>
+
+      <div id="club-tabs"></div>
+
+      <!-- Dashboard -->
+      <div id="view-dashboard" class="app-view active">
+        <div class="section-header">
+          <h2>Dashboard</h2>
+          <select id="dashboard-team-filter"><option value="">Alle Teams</option></select>
+        </div>
+        <div class="card-grid">
+          <div class="card">
+            <h3>Kommende Termine</h3>
+            <ul id="dashboard-events" class="item-list"><li>Laden…</li></ul>
+          </div>
+          <div class="card">
+            <h3>Benachrichtigungen</h3>
+            <ul id="dashboard-notifs" class="item-list"><li>Laden…</li></ul>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Meine Teams</h3>
+          <ul id="dashboard-teams" class="item-list"><li>Laden…</li></ul>
+        </div>
+      </div>
+
+      <!-- Club Management -->
+      <div id="view-club" class="app-view">
+        <div class="section-header">
+          <h2 id="club-name">Verein</h2>
+          <button class="btn btn-primary btn-sm" id="btn-edit-club" style="display:none">Bearbeiten</button>
+        </div>
+        <div id="club-logo-section" class="card">
+          <img id="club-logo" class="club-logo" src="" alt="Logo" style="display:none"/>
+          <div id="club-logo-upload" style="display:none">
+            <input type="file" id="club-logo-file" accept="image/*"/>
+            <button class="btn btn-primary btn-sm" id="btn-upload-logo">Logo hochladen</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="section-header">
+            <h3>Sportarten &amp; Teams</h3>
+            <button class="btn btn-primary btn-sm" id="btn-add-sport" style="display:none">+ Sportart</button>
+          </div>
+          <div id="sports-list"></div>
+        </div>
+        <div class="card">
+          <div class="section-header">
+            <h3>Spielstätten</h3>
+            <button class="btn btn-primary btn-sm" id="btn-add-venue" style="display:none">+ Spielstätte</button>
+          </div>
+          <ul id="venues-list" class="item-list"><li>Laden…</li></ul>
+        </div>
+        <div class="card" id="invitations-section" style="display:none">
+          <div class="section-header">
+            <h3>Einladungen</h3>
+            <button class="btn btn-primary btn-sm" id="btn-create-invitation">+ Einladung</button>
+          </div>
+          <div id="invitation-result"></div>
+        </div>
+      </div>
+
+      <!-- Team View -->
+      <div id="view-team" class="app-view">
+        <div class="section-header">
+          <h2 id="team-name">Team</h2>
+          <button class="btn btn-secondary btn-sm" id="btn-back-club">← Zurück</button>
+        </div>
+        <div class="card-grid">
+          <div class="card">
+            <h3>Trainer</h3>
+            <ul id="team-trainers" class="item-list"><li>Laden…</li></ul>
+            <button class="btn btn-primary btn-sm" id="btn-add-trainer" style="display:none">+ Trainer</button>
+          </div>
+          <div class="card">
+            <h3>Spieler</h3>
+            <ul id="team-players" class="item-list"><li>Laden…</li></ul>
+            <button class="btn btn-primary btn-sm" id="btn-add-player" style="display:none">+ Spieler</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="section-header">
+            <h3>Spiele</h3>
+            <div>
+              <button class="btn btn-primary btn-sm" id="btn-add-game" style="display:none">+ Spiel</button>
+              <button class="btn btn-secondary btn-sm" id="btn-export-ical">iCal</button>
+              <button class="btn btn-secondary btn-sm" id="btn-export-pdf">PDF</button>
+            </div>
+          </div>
+          <ul id="team-games" class="item-list"><li>Laden…</li></ul>
+        </div>
+        <div class="card">
+          <div class="section-header">
+            <h3>Trainings</h3>
+            <button class="btn btn-primary btn-sm" id="btn-add-training" style="display:none">+ Training</button>
+          </div>
+          <ul id="team-trainings" class="item-list"><li>Laden…</li></ul>
+        </div>
+      </div>
+
+      <!-- Event Detail -->
+      <div id="view-event" class="app-view">
+        <div class="section-header">
+          <h2 id="event-title">Termin</h2>
+          <button class="btn btn-secondary btn-sm" id="btn-back-team">← Zurück</button>
+        </div>
+        <div class="card">
+          <div id="event-details"></div>
+          <div class="rsvp-buttons" id="event-rsvp">
+            <button class="btn btn-primary" id="btn-rsvp-accept">✔ Zusagen</button>
+            <button class="btn btn-danger" id="btn-rsvp-decline">✘ Absagen</button>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-export-attendance-pdf">Anwesenheit PDF</button>
+        </div>
+        <div class="card">
+          <h3>Anwesenheit</h3>
+          <div id="event-attendance"></div>
+        </div>
+        <div class="card">
+          <div class="section-header">
+            <h3>Ergebnis / Bericht</h3>
+            <button class="btn btn-sm btn-secondary" id="btn-toggle-preview">Vorschau</button>
+          </div>
+          <div class="app-form">
+            <textarea id="event-result-text" rows="4" placeholder="Ergebnis / Bericht (Markdown)…"></textarea>
+          </div>
+          <div id="event-result-preview" class="md-preview" style="display:none"></div>
+          <button class="btn btn-primary btn-sm" id="btn-save-result" style="margin-top:0.5rem">Speichern</button>
+        </div>
+        <div class="card">
+          <div class="section-header">
+            <h3>Fotos</h3>
+            <div>
+              <input type="file" id="event-photo-file" accept="image/*" style="display:none"/>
+              <button class="btn btn-primary btn-sm" id="btn-upload-photo">+ Foto</button>
+            </div>
+          </div>
+          <div id="event-photos" class="photos-grid"></div>
+        </div>
+      </div>
+
+      <!-- Messages -->
+      <div id="view-messages" class="app-view">
+        <div class="section-header">
+          <h2>Nachrichten</h2>
+          <button class="btn btn-primary btn-sm" id="btn-new-message">+ Neue Nachricht</button>
+        </div>
+        <div id="messages-list"></div>
+        <div id="message-thread" style="display:none">
+          <button class="btn btn-secondary btn-sm" id="btn-back-messages">← Zurück</button>
+          <div id="thread-content" style="margin-top:0.75rem"></div>
+          <div class="app-form" style="margin-top:1rem">
+            <textarea id="reply-text" rows="3" placeholder="Antwort schreiben… (verwende @Name für Erwähnungen)"></textarea>
+            <button class="btn btn-primary btn-sm" id="btn-send-reply" style="margin-top:0.5rem">Antworten</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notifications -->
+      <div id="view-notifications" class="app-view">
+        <div class="section-header">
+          <h2>Benachrichtigungen</h2>
+          <button class="btn btn-secondary btn-sm" id="btn-mark-all-read">Alle gelesen</button>
+        </div>
+        <div id="notifications-list"></div>
+        <div class="card" style="margin-top:1rem">
+          <h3>Einstellungen</h3>
+          <div class="app-form" id="notif-settings">
+            <label><input type="checkbox" id="notif-email"/> E-Mail-Benachrichtigungen</label><br/>
+            <label><input type="checkbox" id="notif-push"/> Push-Benachrichtigungen</label><br/>
+            <label><input type="checkbox" id="notif-dashboard"/> Dashboard-Benachrichtigungen</label><br/>
+            <button class="btn btn-primary btn-sm" id="btn-save-notif-settings" style="margin-top:0.5rem">Speichern</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal -->
+      <div id="modal-overlay" class="modal-overlay" style="display:none">
+        <div class="modal" id="modal-content"></div>
       </div>
     </div>
 
