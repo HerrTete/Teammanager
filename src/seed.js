@@ -31,14 +31,24 @@ async function seedDb() {
   let connection;
   try {
     connection = await pool.getConnection();
-
-    await connection.execute('SET FOREIGN_KEY_CHECKS = 0');
-    for (const table of TABLES_DROP_ORDER) {
-      await connection.execute(`DROP TABLE IF EXISTS \`${table}\``);
+    let fkDisabled = false;
+    try {
+      await connection.execute('SET FOREIGN_KEY_CHECKS = 0');
+      fkDisabled = true;
+      for (const table of TABLES_DROP_ORDER) {
+        await connection.execute(`DROP TABLE IF EXISTS \`${table}\``);
+      }
+    } finally {
+      if (fkDisabled) {
+        try {
+          await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
+        } catch (fkErr) {
+          console.error('Failed to re-enable FOREIGN_KEY_CHECKS:', fkErr.message);
+        }
+      }
+      connection.release();
+      connection = null;
     }
-    await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
-    connection.release();
-    connection = null;
 
     await initDb();
 
