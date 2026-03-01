@@ -409,14 +409,45 @@ function loadTeamFilterOptions() {
     var sports = data.sports || data || [];
     var sel = document.getElementById('dashboard-team-filter');
     sel.innerHTML = '<option value="">Alle Teams</option>';
+
+    var teamPromises = [];
+
     sports.forEach(function(sp) {
-      (sp.teams || []).forEach(function(t) {
-        var opt = document.createElement('option');
-        opt.value = getId(t);
-        opt.textContent = sp.name + ' – ' + t.name;
-        sel.appendChild(opt);
-      });
+      // If teams are already embedded on the sport, use them directly.
+      if (sp.teams && sp.teams.length) {
+        sp.teams.forEach(function(t) {
+          var opt = document.createElement('option');
+          opt.value = getId(t);
+          opt.textContent = sp.name + ' – ' + t.name;
+          sel.appendChild(opt);
+        });
+        return;
+      }
+
+      // Fallback: fetch teams for this sport via dedicated endpoint.
+      var sportId = getId(sp);
+      if (!sportId) {
+        return;
+      }
+
+      var p = api('/api/clubs/' + currentClubId + '/sports/' + sportId + '/teams')
+        .then(function(teamData) {
+          var teams = teamData.teams || teamData || [];
+          teams.forEach(function(t) {
+            var opt = document.createElement('option');
+            opt.value = getId(t);
+            opt.textContent = sp.name + ' – ' + t.name;
+            sel.appendChild(opt);
+          });
+        })
+        .catch(function() {
+          // Ignore errors for individual sports to avoid breaking the whole filter.
+        });
+
+      teamPromises.push(p);
     });
+
+    return Promise.all(teamPromises);
   }).catch(function() {});
 }
 
