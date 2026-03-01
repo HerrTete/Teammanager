@@ -2,6 +2,9 @@
 
 const mockConnection = {
   execute: jest.fn().mockResolvedValue([{ insertId: 1 }, []]),
+  beginTransaction: jest.fn().mockResolvedValue(undefined),
+  commit: jest.fn().mockResolvedValue(undefined),
+  rollback: jest.fn().mockResolvedValue(undefined),
   release: jest.fn(),
 };
 
