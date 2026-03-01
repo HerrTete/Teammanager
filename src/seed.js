@@ -90,6 +90,61 @@ async function seedDb() {
       );
       const sportId = sportResult.insertId;
 
+      // --- Team ---
+      const [teamResult] = await connection.execute(
+        'INSERT INTO teams (name, sport_id) VALUES (?, ?)',
+        ['BBL U14 mix', sportId]
+      );
+      const teamId = teamResult.insertId;
+
+      // --- Roles ---
+      await connection.execute(
+        'INSERT INTO user_roles (user_id, role) VALUES (?, ?)',
+        [userIds['portaladmin'], 'PortalAdmin']
+      );
+      await connection.execute(
+        'INSERT INTO user_roles (user_id, role, club_id) VALUES (?, ?, ?)',
+        [userIds['vereinsadmin'], 'VereinsAdmin', clubId]
+      );
+      await connection.execute(
+        'INSERT INTO user_roles (user_id, role, club_id, sport_id, team_id) VALUES (?, ?, ?, ?, ?)',
+        [userIds['trainer'], 'Trainer', clubId, sportId, teamId]
+      );
+      await connection.execute(
+        'INSERT INTO user_roles (user_id, role, club_id, sport_id, team_id) VALUES (?, ?, ?, ?, ?)',
+        [userIds['spieler'], 'Spieler', clubId, sportId, teamId]
+      );
+      await connection.execute(
+        'INSERT INTO user_roles (user_id, role, club_id, sport_id, team_id) VALUES (?, ?, ?, ?, ?)',
+        [userIds['mitglied'], 'Vereinsmitglied', clubId, sportId, teamId]
+      );
+      await connection.execute(
+        'INSERT INTO user_roles (user_id, role, club_id, sport_id, team_id) VALUES (?, ?, ?, ?, ?)',
+        [userIds['kind'], 'Spieler', clubId, sportId, teamId]
+      );
+
+      // --- Club members ---
+      for (const username of Object.keys(userIds)) {
+        await connection.execute(
+          'INSERT INTO club_members (user_id, club_id) VALUES (?, ?)',
+          [userIds[username], clubId]
+        );
+      }
+
+      // --- Team trainer ---
+      await connection.execute(
+        'INSERT INTO team_trainers (team_id, user_id) VALUES (?, ?)',
+        [teamId, userIds['trainer']]
+      );
+
+      // --- Players ---
+      for (const username of ['spieler', 'kind']) {
+        await connection.execute(
+          'INSERT INTO players (user_id, team_id) VALUES (?, ?)',
+          [userIds[username], teamId]
+        );
+      }
+
       await connection.commit();
     } catch (err) {
       try {
@@ -98,60 +153,6 @@ async function seedDb() {
         // ignore rollback errors to not mask the original error
       }
       throw err;
-    }
-    // --- Team ---
-    const [teamResult] = await connection.execute(
-      'INSERT INTO teams (name, sport_id) VALUES (?, ?)',
-      ['BBL U14 mix', sportId]
-    );
-    const teamId = teamResult.insertId;
-
-    // --- Roles ---
-    await connection.execute(
-      'INSERT INTO user_roles (user_id, role) VALUES (?, ?)',
-      [userIds['portaladmin'], 'PortalAdmin']
-    );
-    await connection.execute(
-      'INSERT INTO user_roles (user_id, role, club_id) VALUES (?, ?, ?)',
-      [userIds['vereinsadmin'], 'VereinsAdmin', clubId]
-    );
-    await connection.execute(
-      'INSERT INTO user_roles (user_id, role, club_id, sport_id, team_id) VALUES (?, ?, ?, ?, ?)',
-      [userIds['trainer'], 'Trainer', clubId, sportId, teamId]
-    );
-    await connection.execute(
-      'INSERT INTO user_roles (user_id, role, club_id, sport_id, team_id) VALUES (?, ?, ?, ?, ?)',
-      [userIds['spieler'], 'Spieler', clubId, sportId, teamId]
-    );
-    await connection.execute(
-      'INSERT INTO user_roles (user_id, role, club_id, sport_id, team_id) VALUES (?, ?, ?, ?, ?)',
-      [userIds['mitglied'], 'Vereinsmitglied', clubId, sportId, teamId]
-    );
-    await connection.execute(
-      'INSERT INTO user_roles (user_id, role, club_id, sport_id, team_id) VALUES (?, ?, ?, ?, ?)',
-      [userIds['kind'], 'Spieler', clubId, sportId, teamId]
-    );
-
-    // --- Club members ---
-    for (const username of Object.keys(userIds)) {
-      await connection.execute(
-        'INSERT INTO club_members (user_id, club_id) VALUES (?, ?)',
-        [userIds[username], clubId]
-      );
-    }
-
-    // --- Team trainer ---
-    await connection.execute(
-      'INSERT INTO team_trainers (team_id, user_id) VALUES (?, ?)',
-      [teamId, userIds['trainer']]
-    );
-
-    // --- Players ---
-    for (const username of ['spieler', 'kind']) {
-      await connection.execute(
-        'INSERT INTO players (user_id, team_id) VALUES (?, ?)',
-        [userIds[username], teamId]
-      );
     }
 
     console.log('Database seeded successfully.');
