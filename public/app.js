@@ -7,6 +7,7 @@ let currentTeamId = null;
 let currentEventType = null;
 let currentEventId = null;
 let clubs = [];
+let isPortalAdmin = false;
 let venuesCache = [];
 let notifInterval = null;
 let appInitialized = false;
@@ -228,7 +229,7 @@ function api(url, opts) {
 function resetAppState() {
   currentClubId = null; currentSportId = null; currentTeamId = null;
   currentEventType = null; currentEventId = null;
-  clubs = []; venuesCache = []; appInitialized = false;
+  clubs = []; isPortalAdmin = false; venuesCache = []; appInitialized = false;
   stopNotifPolling();
 }
 
@@ -305,6 +306,7 @@ function singularEventType(type) {
 function loadClubs() {
   api('/api/clubs').then(function(data) {
     clubs = data.clubs || data || [];
+    isPortalAdmin = !!data.isPortalAdmin;
     buildClubTabs();
     if (clubs.length > 0 && !currentClubId) {
       selectClub(getId(clubs[0]));
@@ -466,6 +468,13 @@ function loadTeamFilterOptions() {
 
 // --- Club Management ---
 function loadClubData() {
+  var adminPanel = document.getElementById('clubs-admin-panel');
+  if (isPortalAdmin) {
+    adminPanel.style.display = '';
+    renderClubsAdminList();
+  } else {
+    adminPanel.style.display = 'none';
+  }
   if (!currentClubId) return;
   api('/api/clubs/' + currentClubId).then(function(data) {
     var club = data.club || data;
@@ -560,6 +569,45 @@ function loadVenues() {
   });
 }
 
+function renderClubsAdminList() {
+  var list = document.getElementById('clubs-admin-list');
+  if (!clubs || clubs.length === 0) {
+    list.innerHTML = '<li style="color:#888">Keine Vereine vorhanden</li>';
+    return;
+  }
+  list.innerHTML = '';
+  clubs.forEach(function(c) {
+    var li = document.createElement('li');
+    li.innerHTML = '<span>' + escHtml(c.name) + '</span><div></div>';
+    var editBtn = document.createElement('button');
+    editBtn.className = 'btn btn-sm btn-secondary';
+    editBtn.textContent = '✎ Bearbeiten';
+    editBtn.addEventListener('click', function() { showEditClubModal(getId(c)); });
+    var inviteBtn = document.createElement('button');
+    inviteBtn.className = 'btn btn-sm btn-primary';
+    inviteBtn.textContent = '+ Admin einladen';
+    inviteBtn.style.marginLeft = '0.25rem';
+    inviteBtn.addEventListener('click', function() { showInvitationModal(getId(c)); });
+    li.querySelector('div').appendChild(editBtn);
+    li.querySelector('div').appendChild(inviteBtn);
+    list.appendChild(li);
+  });
+}
+
+function showCreateClubModal() {
+  showModal('Neuer Verein',
+    '<div class="app-form"><div class="form-group"><label>Vereinsname</label>' +
+    '<input type="text" id="modal-new-club-name"/></div>' +
+    '<button class="btn btn-primary" id="modal-new-club-submit">Erstellen</button></div>');
+  document.getElementById('modal-new-club-submit').addEventListener('click', function() {
+    var name = document.getElementById('modal-new-club-name').value.trim();
+    if (!name) return;
+    api('/api/clubs', { method: 'POST', body: { name: name } }).then(function() {
+      closeModal(); loadClubs();
+    }).catch(function(e) { alert('Fehler: ' + (e.message || 'Fehler')); });
+  });
+}
+
 function uploadLogo() {
   var file = document.getElementById('club-logo-file').files[0];
   if (!file) return;
@@ -572,8 +620,9 @@ function uploadLogo() {
   }).catch(function(e) { alert('Fehler: ' + (e.message || 'Upload fehlgeschlagen')); });
 }
 
-function showEditClubModal() {
-  var club = clubs.find(function(c) { return getId(c) == currentClubId; });
+function showEditClubModal(clubId) {
+  var targetId = (typeof clubId === 'number' || typeof clubId === 'string') ? clubId : currentClubId;
+  var club = clubs.find(function(c) { return getId(c) == targetId; });
   showModal('Verein bearbeiten',
     '<div class="app-form"><div class="form-group"><label>Name</label>' +
     '<input type="text" id="modal-club-name" value="' + escHtml(club ? club.name : '') + '"/></div>' +
@@ -581,7 +630,7 @@ function showEditClubModal() {
   document.getElementById('modal-club-submit').addEventListener('click', function() {
     var name = document.getElementById('modal-club-name').value.trim();
     if (!name) return;
-    api('/api/clubs/' + currentClubId, { method: 'PUT', body: { name: name } }).then(function() {
+    api('/api/clubs/' + targetId, { method: 'PUT', body: { name: name } }).then(function() {
       closeModal(); loadClubs();
     }).catch(function(e) { alert('Fehler: ' + (e.message || 'Fehler')); });
   });
@@ -656,22 +705,25 @@ function deleteVenue(venueId) {
   }).catch(function(e) { alert('Fehler: ' + (e.message || 'Fehler')); });
 }
 
-function showInvitationModal() {
+function showInvitationModal(clubId) {
+  var targetClubId = (typeof clubId === 'number' || typeof clubId === 'string') ? clubId : currentClubId;
   showModal('Einladung erstellen',
     '<div class="app-form">' +
+    '<div class="form-group"><label>E-Mail</label><input type="email" id="modal-inv-email" placeholder="email@beispiel.de"/></div>' +
     '<div class="form-group"><label>Rolle</label><select id="modal-inv-role">' +
-    '<option value="Spieler">Spieler</option><option value="Trainer">Trainer</option>' +
-    '<option value="VereinsAdmin">VereinsAdmin</option></select></div>' +
-    '<div class="form-group"><label>Max. Nutzungen</label><input type="number" id="modal-inv-max" value="1" min="1"/></div>' +
-    '<button class="btn btn-primary" id="modal-inv-submit">Erstellen</button></div>');
+    '<option value="VereinsAdmin">VereinsAdmin</option>' +
+    '<option value="Trainer">Trainer</option>' +
+    '<option value="Vereinsmitglied">Vereinsmitglied</option>' +
+    '<option value="Spieler">Spieler</option>' +
+    '</select></div>' +
+    '<button class="btn btn-primary" id="modal-inv-submit">Einladung senden</button></div>');
   document.getElementById('modal-inv-submit').addEventListener('click', function() {
+    var email = document.getElementById('modal-inv-email').value.trim();
     var role = document.getElementById('modal-inv-role').value;
-    var maxUses = parseInt(document.getElementById('modal-inv-max').value) || 1;
-    api('/api/clubs/' + currentClubId + '/invitations', { method: 'POST', body: { role: role, maxUses: maxUses } }).then(function(data) {
-      var code = data.code || (data.invitation && data.invitation.code) || '';
-      var link = location.origin + '/invite/' + code;
+    if (!email) return;
+    api('/api/clubs/' + targetClubId + '/invitations', { method: 'POST', body: { email: email, role: role } }).then(function() {
       document.getElementById('invitation-result').innerHTML =
-        '<div class="msg ok">Link: <input type="text" value="' + escHtml(link) + '" onclick="this.select()" style="width:100%;margin-top:0.25rem" readonly/></div>';
+        '<div class="msg ok">Einladung an ' + escHtml(email) + ' gesendet.</div>';
       closeModal();
     }).catch(function(e) { alert('Fehler: ' + (e.message || 'Fehler')); });
   });
@@ -1141,7 +1193,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', function() { navigateTo(btn.dataset.view); });
   });
   document.getElementById('btn-upload-logo').addEventListener('click', uploadLogo);
-  document.getElementById('btn-edit-club').addEventListener('click', showEditClubModal);
+  document.getElementById('btn-edit-club').addEventListener('click', function() { showEditClubModal(); });
+  document.getElementById('btn-create-club').addEventListener('click', showCreateClubModal);
   document.getElementById('btn-add-sport').addEventListener('click', showAddSportModal);
   document.getElementById('btn-add-venue').addEventListener('click', showAddVenueModal);
   document.getElementById('btn-create-invitation').addEventListener('click', showInvitationModal);

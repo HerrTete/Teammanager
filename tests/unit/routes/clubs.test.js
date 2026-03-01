@@ -37,6 +37,18 @@ describe('Club Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('ok');
       expect(res.body.clubs).toHaveLength(1);
+      expect(res.body.isPortalAdmin).toBe(false);
+    });
+
+    test('returns isPortalAdmin flag for PortalAdmin user', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[{ id: 1 }], []]) // is PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1, name: 'FC Test', created_at: '2024-01-01' }, { id: 2, name: 'SC Demo', created_at: '2024-02-01' }], []]);
+      const res = await authAgent.get('/api/clubs');
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('ok');
+      expect(res.body.clubs).toHaveLength(2);
+      expect(res.body.isPortalAdmin).toBe(true);
     });
   });
 
