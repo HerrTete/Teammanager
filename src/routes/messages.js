@@ -6,15 +6,19 @@ const { requireAuth, requireClubAccess, validateCsrf } = require('../middleware/
 
 const router = express.Router({ mergeParams: true });
 
-// Parse @mentions from message body and create notifications
-async function processMentions(body, senderId, messageId) {
-  if (!body) return;
+// Parse @mentions from message body and create notifications (scoped to club members)
+async function processMentions(body, senderId, messageId, clubId) {
+  if (!body || !messageId) return;
   const mentionRegex = /@(\w+)/g;
   let match;
   while ((match = mentionRegex.exec(body)) !== null) {
     const mentionedUsername = match[1];
     try {
-      const [users] = await pool.execute('SELECT id FROM users WHERE username = ?', [mentionedUsername]);
+      // Only match users who are members of the same club
+      const [users] = await pool.execute(
+        'SELECT u.id FROM users u INNER JOIN club_members cm ON cm.user_id = u.id WHERE u.username = ? AND cm.club_id = ?',
+        [mentionedUsername, clubId]
+      );
       if (users.length > 0 && users[0].id !== senderId) {
         await pool.execute(
           'INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id) VALUES (?, ?, ?, ?, ?, ?)',
@@ -81,7 +85,7 @@ router.post('/', requireAuth, validateCsrf, requireClubAccess, async (req, res) 
       }
     }
 
-    await processMentions(body, req.session.userId, messageId);
+    await processMentions(body, req.session.userId, messageId, req.params.clubId);
 
     return res.status(201).json({ status: 'ok', messageId });
   } catch (err) {
@@ -133,7 +137,7 @@ router.post('/:messageId/reply', requireAuth, validateCsrf, requireClubAccess, a
       [req.session.userId, body.trim(), parent[0].target_type, parent[0].target_id, req.params.messageId]
     );
 
-    await processMentions(body, req.session.userId, result.insertId);
+    await processMentions(body, req.session.userId, result.insertId, req.params.clubId);
 
     return res.status(201).json({ status: 'ok', messageId: result.insertId });
   } catch (err) {

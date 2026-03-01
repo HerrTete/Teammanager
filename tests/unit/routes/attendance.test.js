@@ -40,9 +40,10 @@ describe('Attendance Routes', () => {
 
     test('returns attendance list', async () => {
       mockPool.execute
-        .mockResolvedValueOnce([[], []])
-        .mockResolvedValueOnce([[{ id: 1 }], []])
-        .mockResolvedValueOnce([[{ id: 1, user_id: 1, status: 'accepted', username: 'user1' }], []]);
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyEventBelongsToClub
+        .mockResolvedValueOnce([[{ id: 1, user_id: 1, status: 'accepted', username: 'user1' }], []]); // SELECT attendance
       const res = await authAgent.get('/api/clubs/1/events/game/1/attendance');
       expect(res.status).toBe(200);
       expect(res.body.attendance).toBeDefined();
@@ -61,9 +62,10 @@ describe('Attendance Routes', () => {
 
     test('accepts RSVP', async () => {
       mockPool.execute
-        .mockResolvedValueOnce([[], []])
-        .mockResolvedValueOnce([[{ id: 1 }], []])
-        .mockResolvedValueOnce([[], []]) // no existing attendance
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyEventBelongsToClub
+        .mockResolvedValueOnce([[], []])            // no existing attendance
         .mockResolvedValueOnce([{ insertId: 1 }, []]); // insert
       const res = await authAgent.post('/api/clubs/1/events/game/1/attendance')
         .set('X-CSRF-Token', csrfToken).send({ status: 'accepted' });

@@ -31,9 +31,10 @@ describe('Photo Routes', () => {
 
     test('uploads photo', async () => {
       mockPool.execute
-        .mockResolvedValueOnce([[], []])
-        .mockResolvedValueOnce([[{ id: 1 }], []])
-        .mockResolvedValueOnce([{ insertId: 1 }, []]);
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyEventBelongsToClub
+        .mockResolvedValueOnce([{ insertId: 1 }, []]); // INSERT
       const res = await authAgent.post('/api/clubs/1/events/game/1/photos')
         .set('X-CSRF-Token', csrfToken)
         .attach('photo', Buffer.from('fake-image-data'), 'test.jpg');
@@ -45,9 +46,10 @@ describe('Photo Routes', () => {
   describe('GET /api/clubs/:clubId/events/:eventType/:eventId/photos', () => {
     test('returns photo list', async () => {
       mockPool.execute
-        .mockResolvedValueOnce([[], []])
-        .mockResolvedValueOnce([[{ id: 1 }], []])
-        .mockResolvedValueOnce([[{ id: 1, filename: 'test.jpg', mime_type: 'image/jpeg' }], []]);
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyEventBelongsToClub
+        .mockResolvedValueOnce([[{ id: 1, filename: 'test.jpg', mime_type: 'image/jpeg' }], []]); // SELECT
       const res = await authAgent.get('/api/clubs/1/events/game/1/photos');
       expect(res.status).toBe(200);
       expect(res.body.photos).toBeDefined();
@@ -60,14 +62,9 @@ describe('Photo Routes', () => {
       expect(res.status).toBe(401);
     });
 
-    test('returns photo data', async () => {
-      const imgBuf = Buffer.from('img-data');
-      mockPool.execute.mockResolvedValueOnce([
-        [{ data: imgBuf, mime_type: 'image/jpeg', filename: 'test.jpg' }], [],
-      ]);
+    test('returns 404 for disabled direct access', async () => {
       const res = await authAgent.get('/api/photos/1');
-      expect(res.status).toBe(200);
-      expect(res.headers['content-type']).toContain('image/jpeg');
+      expect(res.status).toBe(404);
     });
   });
 

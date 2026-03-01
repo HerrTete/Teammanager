@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { pool } = require('../db');
-const { requireAuth, requireRole, requireClubAccess, validateCsrf } = require('../middleware/auth');
+const { requireAuth, requireRole, requireClubAccess, validateCsrf, verifyTeamBelongsToClub } = require('../middleware/auth');
 const { marked } = require('marked');
 
 const router = express.Router({ mergeParams: true });
@@ -10,6 +10,9 @@ const router = express.Router({ mergeParams: true });
 // GET /api/clubs/:clubId/teams/:teamId/trainings
 router.get('/', requireAuth, requireClubAccess, async (req, res) => {
   try {
+    if (!(await verifyTeamBelongsToClub(pool, req.params.teamId, req.params.clubId))) {
+      return res.status(403).json({ status: 'error', message: 'Team gehört nicht zu diesem Verein.' });
+    }
     const [trainings] = await pool.execute(
       'SELECT t.id, t.title, t.date, t.time, t.location_text, t.venue_id, t.team_id, t.created_by, t.created_at FROM trainings t WHERE t.team_id = ? ORDER BY t.date, t.time',
       [req.params.teamId]
@@ -28,6 +31,9 @@ router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['Por
     return res.status(400).json({ status: 'error', message: 'Titel ist erforderlich.' });
   }
   try {
+    if (!(await verifyTeamBelongsToClub(pool, req.params.teamId, req.params.clubId))) {
+      return res.status(403).json({ status: 'error', message: 'Team gehört nicht zu diesem Verein.' });
+    }
     const [result] = await pool.execute(
       'INSERT INTO trainings (title, date, time, location_text, venue_id, team_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [title.trim(), date || null, time || null, location_text || null, venue_id || null, req.params.teamId, req.session.userId]

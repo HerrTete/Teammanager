@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { pool } = require('../db');
-const { requireAuth, requireClubAccess } = require('../middleware/auth');
+const { requireAuth, requireClubAccess, verifyTeamBelongsToClub, verifyEventBelongsToClub } = require('../middleware/auth');
 const { generateEventICal } = require('../services/ical');
 const { generateSchedulePDF, generateAttendanceListPDF } = require('../services/pdf');
 
@@ -11,6 +11,9 @@ const router = express.Router({ mergeParams: true });
 // GET /api/clubs/:clubId/teams/:teamId/schedule/ical
 router.get('/teams/:teamId/schedule/ical', requireAuth, requireClubAccess, async (req, res) => {
   try {
+    if (!(await verifyTeamBelongsToClub(pool, req.params.teamId, req.params.clubId))) {
+      return res.status(403).json({ status: 'error', message: 'Team gehört nicht zu diesem Verein.' });
+    }
     const [games] = await pool.execute(
       'SELECT g.*, v.address AS venue_address FROM games g LEFT JOIN venues v ON g.venue_id = v.id WHERE g.team_id = ? ORDER BY g.date, g.time',
       [req.params.teamId]
@@ -49,6 +52,9 @@ router.get('/teams/:teamId/schedule/ical', requireAuth, requireClubAccess, async
 // GET /api/clubs/:clubId/teams/:teamId/schedule/pdf
 router.get('/teams/:teamId/schedule/pdf', requireAuth, requireClubAccess, async (req, res) => {
   try {
+    if (!(await verifyTeamBelongsToClub(pool, req.params.teamId, req.params.clubId))) {
+      return res.status(403).json({ status: 'error', message: 'Team gehört nicht zu diesem Verein.' });
+    }
     const [games] = await pool.execute(
       'SELECT * FROM games WHERE team_id = ? ORDER BY date, time',
       [req.params.teamId]
@@ -75,6 +81,9 @@ router.get('/events/:eventType/:eventId/attendance/pdf', requireAuth, requireClu
   try {
     const tables = { game: 'games', training: 'trainings' };
     const table = tables[eventType];
+    if (!(await verifyEventBelongsToClub(pool, eventType, eventId, clubId))) {
+      return res.status(403).json({ status: 'error', message: 'Event gehört nicht zu diesem Verein.' });
+    }
     const [events] = await pool.execute(`SELECT * FROM ${table} WHERE id = ?`, [eventId]);
     if (events.length === 0) {
       return res.status(404).json({ status: 'error', message: 'Event nicht gefunden.' });

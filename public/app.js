@@ -294,6 +294,13 @@ function fmtDateTime(s) { return fmtDate(s) + ' ' + fmtTime(s); }
 
 function getId(obj) { return obj.id || obj._id; }
 
+// Convert plural eventType (games/trainings) to singular (game/training) for event-scoped routes
+function singularEventType(type) {
+  if (type === 'games') return 'game';
+  if (type === 'trainings') return 'training';
+  return type;
+}
+
 // --- Clubs ---
 function loadClubs() {
   api('/api/clubs').then(function(data) {
@@ -347,7 +354,7 @@ function loadDashboard() {
   evList.innerHTML = notifList.innerHTML = teamList.innerHTML = '<li>Laden…</li>';
 
   api('/api/dashboard').then(function(data) {
-    var events = data.events || [];
+    var events = data.upcomingEvents || data.events || [];
     if (events.length === 0) {
       evList.innerHTML = '<li>Keine kommenden Termine</li>';
     } else {
@@ -355,10 +362,11 @@ function loadDashboard() {
       events.forEach(function(ev) {
         var li = document.createElement('li');
         li.innerHTML = '<span>' + fmtDateTime(ev.date || ev.startDate) +
-          ' – <strong>' + escHtml(ev.title || ev.opponent || ev.type || 'Termin') + '</strong></span>';
+          ' – <strong>' + escHtml(ev.title || ev.opponent || ev.type || 'Termin') + '</strong>' +
+          (ev.team_name ? ' (' + escHtml(ev.team_name) + ')' : '') + '</span>';
         li.style.cursor = 'pointer';
         li.addEventListener('click', function() {
-          var eType = ev.eventType || (ev.opponent ? 'games' : 'trainings');
+          var eType = ev.event_type === 'game' ? 'games' : ev.event_type === 'training' ? 'trainings' : (ev.opponent ? 'games' : 'trainings');
           currentTeamId = ev.teamId || currentTeamId;
           currentSportId = ev.sportId || currentSportId;
           loadEvent(eType, getId(ev));
@@ -367,18 +375,23 @@ function loadDashboard() {
       });
     }
 
-    var notifs = data.notifications || [];
-    if (notifs.length === 0) {
-      notifList.innerHTML = '<li>Keine neuen Benachrichtigungen</li>';
-    } else {
-      notifList.innerHTML = '';
-      notifs.slice(0, 5).forEach(function(n) {
-        var li = document.createElement('li');
-        li.textContent = n.message || n.text || n.title;
-        if (!n.read) li.style.fontWeight = 'bold';
-        notifList.appendChild(li);
-      });
-    }
+    // Fetch notifications separately
+    api('/api/notifications').then(function(notifData) {
+      var notifs = notifData.notifications || [];
+      if (notifs.length === 0) {
+        notifList.innerHTML = '<li>Keine neuen Benachrichtigungen</li>';
+      } else {
+        notifList.innerHTML = '';
+        notifs.slice(0, 5).forEach(function(n) {
+          var li = document.createElement('li');
+          li.textContent = n.message || n.text || n.title;
+          if (!n.is_read && !n.read) li.style.fontWeight = 'bold';
+          notifList.appendChild(li);
+        });
+      }
+    }).catch(function() {
+      notifList.innerHTML = '<li>–</li>';
+    });
 
     var teams = data.teams || [];
     if (teams.length === 0) {
@@ -886,7 +899,8 @@ function loadEvent(type, eventId) {
 function loadAttendance() {
   var container = document.getElementById('event-attendance');
   container.innerHTML = '<p>Laden…</p>';
-  api('/api/clubs/' + currentClubId + '/events/' + currentEventType + '/' + currentEventId + '/attendance').then(function(data) {
+  var evType = singularEventType(currentEventType);
+  api('/api/clubs/' + currentClubId + '/events/' + evType + '/' + currentEventId + '/attendance').then(function(data) {
     var list = data.attendance || data || [];
     if (list.length === 0) { container.innerHTML = '<p style="color:#888">Keine Anwesenheitsdaten</p>'; return; }
     container.innerHTML = '';
@@ -902,7 +916,8 @@ function loadAttendance() {
 }
 
 function submitRSVP(status) {
-  api('/api/clubs/' + currentClubId + '/events/' + currentEventType + '/' + currentEventId + '/attendance', {
+  var evType = singularEventType(currentEventType);
+  api('/api/clubs/' + currentClubId + '/events/' + evType + '/' + currentEventId + '/attendance', {
     method: 'POST', body: { status: status }
   }).then(function() { loadAttendance(); })
     .catch(function(e) { alert('Fehler: ' + (e.message || 'Fehler')); });
@@ -911,7 +926,7 @@ function submitRSVP(status) {
 function saveResult() {
   var text = document.getElementById('event-result-text').value;
   api('/api/clubs/' + currentClubId + '/teams/' + currentTeamId + '/' + currentEventType + '/' + currentEventId + '/result', {
-    method: 'PUT', body: { result: text }
+    method: 'PUT', body: { result_markdown: text }
   }).then(function() { alert('Ergebnis gespeichert.'); })
     .catch(function(e) { alert('Fehler: ' + (e.message || 'Fehler')); });
 }
@@ -937,7 +952,7 @@ function uploadEventPhoto() {
     if (!file) return;
     var fd = new FormData();
     fd.append('photo', file);
-    api('/api/clubs/' + currentClubId + '/events/' + currentEventType + '/' + currentEventId + '/photos', {
+    api('/api/clubs/' + currentClubId + '/events/' + singularEventType(currentEventType) + '/' + currentEventId + '/photos', {
       method: 'POST', body: fd
     }).then(function() { loadEventPhotos(); input.value = ''; })
       .catch(function(e) { alert('Fehler: ' + (e.message || 'Upload fehlgeschlagen')); });
@@ -946,7 +961,7 @@ function uploadEventPhoto() {
 
 function loadEventPhotos() {
   var container = document.getElementById('event-photos');
-  api('/api/clubs/' + currentClubId + '/events/' + currentEventType + '/' + currentEventId + '/photos').then(function(data) {
+  api('/api/clubs/' + currentClubId + '/events/' + singularEventType(currentEventType) + '/' + currentEventId + '/photos').then(function(data) {
     var photos = data.photos || data || [];
     if (photos.length === 0) { container.innerHTML = '<p style="color:#888">Keine Fotos</p>'; return; }
     container.innerHTML = '';
@@ -970,7 +985,7 @@ function exportPDF() {
 
 function exportAttendancePDF() {
   if (currentClubId && currentEventType && currentEventId)
-    window.open('/api/clubs/' + currentClubId + '/events/' + currentEventType + '/' + currentEventId + '/attendance/pdf');
+    window.open('/api/clubs/' + currentClubId + '/events/' + singularEventType(currentEventType) + '/' + currentEventId + '/attendance/pdf');
 }
 
 // --- Messages ---

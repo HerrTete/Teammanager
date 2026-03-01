@@ -37,10 +37,11 @@ describe('Export Routes', () => {
 
     test('returns iCal data', async () => {
       mockPool.execute
-        .mockResolvedValueOnce([[], []])
-        .mockResolvedValueOnce([[{ id: 1 }], []])
-        .mockResolvedValueOnce([[], []]) // games
-        .mockResolvedValueOnce([[], []]); // trainings
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyTeamBelongsToClub
+        .mockResolvedValueOnce([[], []])            // games
+        .mockResolvedValueOnce([[], []]);           // trainings
       const res = await authAgent.get('/api/clubs/1/teams/1/schedule/ical');
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toContain('text/calendar');
@@ -52,9 +53,10 @@ describe('Export Routes', () => {
       const { generateSchedulePDF } = require('../../../src/services/pdf');
       generateSchedulePDF.mockResolvedValue(Buffer.from('pdf-data'));
       mockPool.execute
-        .mockResolvedValueOnce([[], []])
-        .mockResolvedValueOnce([[{ id: 1 }], []])
-        .mockResolvedValueOnce([[], []]) // games
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyTeamBelongsToClub
+        .mockResolvedValueOnce([[], []])            // games
         .mockResolvedValueOnce([[{ logo: null }], []]); // club
       const res = await authAgent.get('/api/clubs/1/teams/1/schedule/pdf');
       expect(res.status).toBe(200);
@@ -67,10 +69,11 @@ describe('Export Routes', () => {
       const { generateAttendanceListPDF } = require('../../../src/services/pdf');
       generateAttendanceListPDF.mockResolvedValue(Buffer.from('pdf-data'));
       mockPool.execute
-        .mockResolvedValueOnce([[], []])
-        .mockResolvedValueOnce([[{ id: 1 }], []])
-        .mockResolvedValueOnce([[{ id: 1, title: 'Game', date: '2024-01-01' }], []])
-        .mockResolvedValueOnce([[], []]) // attendance
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyEventBelongsToClub
+        .mockResolvedValueOnce([[{ id: 1, title: 'Game', date: '2024-01-01' }], []]) // event
+        .mockResolvedValueOnce([[], []])            // attendance
         .mockResolvedValueOnce([[{ logo: null }], []]); // club
       const res = await authAgent.get('/api/clubs/1/events/game/1/attendance/pdf');
       expect(res.status).toBe(200);

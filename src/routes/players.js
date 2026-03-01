@@ -2,13 +2,16 @@
 
 const express = require('express');
 const { pool } = require('../db');
-const { requireAuth, requireRole, requireClubAccess, validateCsrf } = require('../middleware/auth');
+const { requireAuth, requireRole, requireClubAccess, validateCsrf, verifyTeamBelongsToClub } = require('../middleware/auth');
 
 const router = express.Router({ mergeParams: true });
 
 // GET /api/clubs/:clubId/teams/:teamId/players
 router.get('/', requireAuth, requireClubAccess, async (req, res) => {
   try {
+    if (!(await verifyTeamBelongsToClub(pool, req.params.teamId, req.params.clubId))) {
+      return res.status(403).json({ status: 'error', message: 'Team gehört nicht zu diesem Verein.' });
+    }
     const [players] = await pool.execute(
       'SELECT p.id, p.user_id, p.jersey_number, p.created_at, u.username FROM players p INNER JOIN users u ON p.user_id = u.id WHERE p.team_id = ? ORDER BY p.jersey_number',
       [req.params.teamId]

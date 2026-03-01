@@ -31,9 +31,10 @@ describe('Training Routes', () => {
 
     test('returns trainings for club member', async () => {
       mockPool.execute
-        .mockResolvedValueOnce([[], []])
-        .mockResolvedValueOnce([[{ id: 1 }], []])
-        .mockResolvedValueOnce([[{ id: 1, title: 'Abschlusstraining' }], []]);
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyTeamBelongsToClub
+        .mockResolvedValueOnce([[{ id: 1, title: 'Abschlusstraining' }], []]); // SELECT
       const res = await authAgent.get('/api/clubs/1/teams/1/trainings');
       expect(res.status).toBe(200);
       expect(res.body.trainings).toBeDefined();
@@ -54,10 +55,11 @@ describe('Training Routes', () => {
 
     test('creates training with valid data', async () => {
       mockPool.execute
-        .mockResolvedValueOnce([[], []])
-        .mockResolvedValueOnce([[{ id: 1 }], []])
-        .mockResolvedValueOnce([[{ role: 'Trainer' }], []])
-        .mockResolvedValueOnce([{ insertId: 1 }, []]);
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ role: 'Trainer' }], []])  // requireRole
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyTeamBelongsToClub
+        .mockResolvedValueOnce([{ insertId: 1 }, []]); // INSERT
       const res = await authAgent.post('/api/clubs/1/teams/1/trainings')
         .set('X-CSRF-Token', csrfToken)
         .send({ title: 'Abschlusstraining', date: '2024-06-01' });

@@ -2,7 +2,7 @@
 
 const express = require('express');
 const { pool } = require('../db');
-const { requireAuth, requireClubAccess, validateCsrf } = require('../middleware/auth');
+const { requireAuth, requireClubAccess, validateCsrf, verifyEventBelongsToClub } = require('../middleware/auth');
 const { generateAttendanceListPDF } = require('../services/pdf');
 
 const router = express.Router({ mergeParams: true });
@@ -11,11 +11,14 @@ const VALID_EVENT_TYPES = ['game', 'training'];
 
 // GET /api/clubs/:clubId/events/:eventType/:eventId/attendance
 router.get('/', requireAuth, requireClubAccess, async (req, res) => {
-  const { eventType, eventId } = req.params;
+  const { eventType, eventId, clubId } = req.params;
   if (!VALID_EVENT_TYPES.includes(eventType)) {
     return res.status(400).json({ status: 'error', message: 'Ungültiger Eventtyp.' });
   }
   try {
+    if (!(await verifyEventBelongsToClub(pool, eventType, eventId, clubId))) {
+      return res.status(403).json({ status: 'error', message: 'Event gehört nicht zu diesem Verein.' });
+    }
     const [attendance] = await pool.execute(
       'SELECT a.id, a.user_id, a.status, a.reminded, a.escalated, a.created_at, a.updated_at, u.username FROM attendance a INNER JOIN users u ON a.user_id = u.id WHERE a.event_type = ? AND a.event_id = ?',
       [eventType, eventId]
@@ -29,7 +32,7 @@ router.get('/', requireAuth, requireClubAccess, async (req, res) => {
 
 // POST /api/clubs/:clubId/events/:eventType/:eventId/attendance - RSVP
 router.post('/', requireAuth, validateCsrf, requireClubAccess, async (req, res) => {
-  const { eventType, eventId } = req.params;
+  const { eventType, eventId, clubId } = req.params;
   const { status } = req.body || {};
   if (!VALID_EVENT_TYPES.includes(eventType)) {
     return res.status(400).json({ status: 'error', message: 'Ungültiger Eventtyp.' });
@@ -38,6 +41,9 @@ router.post('/', requireAuth, validateCsrf, requireClubAccess, async (req, res) 
     return res.status(400).json({ status: 'error', message: 'Status muss "accepted" oder "declined" sein.' });
   }
   try {
+    if (!(await verifyEventBelongsToClub(pool, eventType, eventId, clubId))) {
+      return res.status(403).json({ status: 'error', message: 'Event gehört nicht zu diesem Verein.' });
+    }
     // Upsert attendance
     const [existing] = await pool.execute(
       'SELECT id FROM attendance WHERE user_id = ? AND event_type = ? AND event_id = ?',
@@ -70,6 +76,9 @@ router.get('/export', requireAuth, requireClubAccess, async (req, res) => {
   try {
     const tables = { game: 'games', training: 'trainings' };
     const table = tables[eventType];
+    if (!(await verifyEventBelongsToClub(pool, eventType, eventId, clubId))) {
+      return res.status(403).json({ status: 'error', message: 'Event gehört nicht zu diesem Verein.' });
+    }
     const [events] = await pool.execute(`SELECT * FROM ${table} WHERE id = ?`, [eventId]);
     if (events.length === 0) {
       return res.status(404).json({ status: 'error', message: 'Event nicht gefunden.' });
