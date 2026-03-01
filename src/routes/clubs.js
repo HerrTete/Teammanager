@@ -25,7 +25,7 @@ router.get('/', requireAuth, async (req, res) => {
         [req.session.userId]
       );
     }
-    return res.json({ status: 'ok', clubs });
+    return res.json({ status: 'ok', clubs, isPortalAdmin: adminRoles.length > 0 });
   } catch (err) {
     console.error('List clubs error:', err.message);
     return res.status(500).json({ status: 'error', message: 'Interner Serverfehler.' });
