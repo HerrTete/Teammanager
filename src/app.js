@@ -103,32 +103,21 @@ app.use('/api/dashboard', dashboardRoutes);
 // Photo direct access routes (outside club context)
 
 // GET /api/photos/:photoId
+// Disabled to enforce access via club-scoped photo routes and prevent cross-tenant exposure.
 app.get('/api/photos/:photoId', requireAuth, async (req, res) => {
-  try {
-    const [rows] = await pool.execute('SELECT data, mime_type, filename FROM photos WHERE id = ?', [req.params.photoId]);
-    if (rows.length === 0 || !rows[0].data) {
-      return res.status(404).json({ status: 'error', message: 'Foto nicht gefunden.' });
-    }
-    res.set('Content-Type', rows[0].mime_type || 'image/jpeg');
-    return res.send(rows[0].data);
-  } catch (err) {
-    console.error('Get photo error:', err.message);
-    return res.status(500).json({ status: 'error', message: 'Interner Serverfehler.' });
-  }
+  return res.status(404).json({
+    status: 'error',
+    message: 'Direkter Fotozugriff per ID ist nicht verfügbar. Bitte nutzen Sie die Vereins-spezifischen Endpunkte.'
+  });
 });
 
 // DELETE /api/photos/:photoId
+// Disabled to enforce deletion via club-scoped photo routes and prevent cross-tenant exposure.
 app.delete('/api/photos/:photoId', requireAuth, requireRole(['PortalAdmin', 'VereinsAdmin', 'Trainer']), async (req, res) => {
-  try {
-    const [result] = await pool.execute('DELETE FROM photos WHERE id = ?', [req.params.photoId]);
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ status: 'error', message: 'Foto nicht gefunden.' });
-    }
-    return res.json({ status: 'ok', message: 'Foto gelöscht.' });
-  } catch (err) {
-    console.error('Delete photo error:', err.message);
-    return res.status(500).json({ status: 'error', message: 'Interner Serverfehler.' });
-  }
+  return res.status(404).json({
+    status: 'error',
+    message: 'Direktes Löschen von Fotos per ID ist nicht verfügbar. Bitte nutzen Sie die Vereins-spezifischen Endpunkte.'
+  });
 });
 
 module.exports = app;
