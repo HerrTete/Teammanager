@@ -115,8 +115,8 @@ async function seedDb() {
         [userIds['spieler'], 'Spieler', clubId, sportId, teamId]
       );
       await connection.execute(
-        'INSERT INTO user_roles (user_id, role, club_id, sport_id, team_id) VALUES (?, ?, ?, ?, ?)',
-        [userIds['mitglied'], 'Vereinsmitglied', clubId, sportId, teamId]
+        'INSERT INTO user_roles (user_id, role, club_id) VALUES (?, ?, ?)',
+        [userIds['mitglied'], 'Vereinsmitglied', clubId]
       );
       await connection.execute(
         'INSERT INTO user_roles (user_id, role, club_id, sport_id, team_id) VALUES (?, ?, ?, ?, ?)',
