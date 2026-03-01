@@ -44,40 +44,51 @@ async function seedDb() {
 
     connection = await pool.getConnection();
 
-    const hash = await bcrypt.hash(SEED_PASSWORD, BCRYPT_SALT_ROUNDS);
+    await connection.beginTransaction();
+    try {
+      const hash = await bcrypt.hash(SEED_PASSWORD, BCRYPT_SALT_ROUNDS);
 
-    // --- Users ---
-    const users = [
-      { username: 'portaladmin', email: 'portaladmin@herrtete.de' },
-      { username: 'vereinsadmin', email: 'vereinsadmin@herrtete.de' },
-      { username: 'trainer', email: 'trainer@herrtete.de' },
-      { username: 'spieler', email: 'spieler@herrtete.de' },
-      { username: 'mitglied', email: 'mitglied@herrtete.de' },
-      { username: 'kind', email: 'kind@herrtete.de' },
-    ];
-    const userIds = {};
-    for (const u of users) {
-      const [result] = await connection.execute(
-        'INSERT INTO users (username, email, password_hash, email_verified) VALUES (?, ?, ?, TRUE)',
-        [u.username, u.email, hash]
+      // --- Users ---
+      const users = [
+        { username: 'portaladmin', email: 'portaladmin@herrtete.de' },
+        { username: 'vereinsadmin', email: 'vereinsadmin@herrtete.de' },
+        { username: 'trainer', email: 'trainer@herrtete.de' },
+        { username: 'spieler', email: 'spieler@herrtete.de' },
+        { username: 'mitglied', email: 'mitglied@herrtete.de' },
+        { username: 'kind', email: 'kind@herrtete.de' },
+      ];
+      const userIds = {};
+      for (const u of users) {
+        const [result] = await connection.execute(
+          'INSERT INTO users (username, email, password_hash, email_verified) VALUES (?, ?, ?, TRUE)',
+          [u.username, u.email, hash]
+        );
+        userIds[u.username] = result.insertId;
+      }
+
+      // --- Club ---
+      const [clubResult] = await connection.execute(
+        'INSERT INTO clubs (name) VALUES (?)',
+        ['Dorfverein']
       );
-      userIds[u.username] = result.insertId;
+      const clubId = clubResult.insertId;
+
+      // --- Sport ---
+      const [sportResult] = await connection.execute(
+        'INSERT INTO sports (name, club_id) VALUES (?, ?)',
+        ['Basketball', clubId]
+      );
+      const sportId = sportResult.insertId;
+
+      await connection.commit();
+    } catch (err) {
+      try {
+        await connection.rollback();
+      } catch (_) {
+        // ignore rollback errors to not mask the original error
+      }
+      throw err;
     }
-
-    // --- Club ---
-    const [clubResult] = await connection.execute(
-      'INSERT INTO clubs (name) VALUES (?)',
-      ['Dorfverein']
-    );
-    const clubId = clubResult.insertId;
-
-    // --- Sport ---
-    const [sportResult] = await connection.execute(
-      'INSERT INTO sports (name, club_id) VALUES (?, ?)',
-      ['Basketball', clubId]
-    );
-    const sportId = sportResult.insertId;
-
     // --- Team ---
     const [teamResult] = await connection.execute(
       'INSERT INTO teams (name, sport_id) VALUES (?, ?)',
