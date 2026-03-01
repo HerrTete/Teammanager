@@ -37,6 +37,19 @@ function checkAuthStatus() {
         banner.textContent = 'Nicht angemeldet.';
         logoutBtn.style.display = 'none';
         forms.style.display = '';
+        if (data.pendingVerification) {
+          // Activate the register tab without triggering the captcha/reset side-effects of switchTab
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'register'));
+          document.getElementById('tab-login').classList.remove('active');
+          document.getElementById('tab-register').classList.add('active');
+          document.getElementById('register-form').style.display = 'none';
+          document.getElementById('verify-msg').className = 'msg hidden';
+          showMsg('register-msg', 'Bitte geben Sie den Verifizierungscode aus Ihrer E-Mail ein.', 'ok');
+          // Only reveal the verify form after the CSRF token is loaded to prevent 403 on fast submit
+          loadCsrfToken().finally(() => {
+            document.getElementById('verify-section').style.display = '';
+          });
+        }
       }
     })
     .catch(() => {
