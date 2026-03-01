@@ -5,7 +5,9 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "test": "jest --forceExit --detectOpenHandles",
+    "test:unit": "jest tests/unit --forceExit --detectOpenHandles"
   },
   "engines": {
     "node": ">=18.0.0"
