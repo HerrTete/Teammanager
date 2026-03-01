@@ -48,12 +48,12 @@ async function seedDb() {
 
     // --- Users ---
     const users = [
-      { username: 'portaladmin', email: 'portaladmin@example.com' },
-      { username: 'vereinsadmin', email: 'vereinsadmin@example.com' },
-      { username: 'trainer', email: 'trainer@example.com' },
-      { username: 'spieler', email: 'spieler@example.com' },
-      { username: 'mitglied', email: 'mitglied@example.com' },
-      { username: 'kind', email: 'kind@example.com' },
+      { username: 'portaladmin', email: 'portaladmin@herrtete.de' },
+      { username: 'vereinsadmin', email: 'vereinsadmin@herrtete.de' },
+      { username: 'trainer', email: 'trainer@herrtete.de' },
+      { username: 'spieler', email: 'spieler@herrtete.de' },
+      { username: 'mitglied', email: 'mitglied@herrtete.de' },
+      { username: 'kind', email: 'kind@herrtete.de' },
     ];
     const userIds = {};
     for (const u of users) {
