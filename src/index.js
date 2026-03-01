@@ -382,7 +382,7 @@ app.get('/api/auth/status', (req, res) => {
   if (req.session && req.session.userId) {
     return res.json({ loggedIn: true, username: req.session.username });
   }
-  return res.json({ loggedIn: false });
+  return res.json({ loggedIn: false, pendingVerification: !!(req.session && req.session.pendingRegistration) });
 });
 
 Promise.all([

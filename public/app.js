@@ -37,6 +37,12 @@ function checkAuthStatus() {
         banner.textContent = 'Nicht angemeldet.';
         logoutBtn.style.display = 'none';
         forms.style.display = '';
+        if (data.pendingVerification) {
+          switchTab('register');
+          document.getElementById('register-form').style.display = 'none';
+          document.getElementById('verify-section').style.display = '';
+          showMsg('register-msg', 'Bitte geben Sie den Verifizierungscode aus Ihrer E-Mail ein.', 'ok');
+        }
       }
     })
     .catch(() => {
