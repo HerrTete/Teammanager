@@ -101,10 +101,9 @@ app.use('/api/clubs/:clubId/events/:eventType/:eventId/photos', photoRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
 // Photo direct access routes (outside club context)
-const { requireAuth: authCheck } = require('./middleware/auth');
 
 // GET /api/photos/:photoId
-app.get('/api/photos/:photoId', authCheck, async (req, res) => {
+app.get('/api/photos/:photoId', requireAuth, async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT data, mime_type, filename FROM photos WHERE id = ?', [req.params.photoId]);
     if (rows.length === 0 || !rows[0].data) {
@@ -119,7 +118,7 @@ app.get('/api/photos/:photoId', authCheck, async (req, res) => {
 });
 
 // DELETE /api/photos/:photoId
-app.delete('/api/photos/:photoId', authCheck, requireRole(['PortalAdmin', 'VereinsAdmin', 'Trainer']), async (req, res) => {
+app.delete('/api/photos/:photoId', requireAuth, requireRole(['PortalAdmin', 'VereinsAdmin', 'Trainer']), async (req, res) => {
   try {
     const [result] = await pool.execute('DELETE FROM photos WHERE id = ?', [req.params.photoId]);
     if (result.affectedRows === 0) {

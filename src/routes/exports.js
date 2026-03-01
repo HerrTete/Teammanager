@@ -73,7 +73,8 @@ router.get('/events/:eventType/:eventId/attendance/pdf', requireAuth, requireClu
     return res.status(400).json({ status: 'error', message: 'Ungültiger Eventtyp.' });
   }
   try {
-    const table = eventType === 'game' ? 'games' : 'trainings';
+    const tables = { game: 'games', training: 'trainings' };
+    const table = tables[eventType];
     const [events] = await pool.execute(`SELECT * FROM ${table} WHERE id = ?`, [eventId]);
     if (events.length === 0) {
       return res.status(404).json({ status: 'error', message: 'Event nicht gefunden.' });
