@@ -4,7 +4,7 @@ const { createMockServer } = require('./helpers/mockServer');
 let server;
 
 test.beforeAll(async () => {
-  const app = createMockServer();
+  const app = createMockServer({ isPortalAdmin: true });
   server = app.listen(3458);
   await new Promise(resolve => server.on('listening', resolve));
 });

@@ -2,7 +2,8 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 
-function createMockServer() {
+function createMockServer(options) {
+  const opts = Object.assign({ isPortalAdmin: false, clubRole: null }, options || {});
   const app = express();
   app.use(express.json());
   app.use(express.static(path.join(__dirname, '..', '..', '..', 'public')));
@@ -94,10 +95,25 @@ function createMockServer() {
     if (!req.session || !req.session.userId) {
       return res.status(401).json({ status: 'error', message: 'Nicht angemeldet.' });
     }
-    res.json({ status: 'ok', clubs: [
+    const clubBase = [
       { id: 1, name: 'FC Test', created_at: '2024-01-01' },
       { id: 2, name: 'SV Muster', created_at: '2024-02-01' },
-    ] });
+    ];
+    const clubs = clubBase.map(c => opts.clubRole ? Object.assign({}, c, { role: opts.clubRole }) : c);
+    res.json({ status: 'ok', isPortalAdmin: opts.isPortalAdmin, clubs });
+  });
+
+  // Mock single club
+  app.get('/api/clubs/:clubId', (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ status: 'error', message: 'Nicht angemeldet.' });
+    }
+    const clubId = parseInt(req.params.clubId, 10);
+    const names = { 1: 'FC Test', 2: 'SV Muster' };
+    res.json({
+      status: 'ok',
+      club: { id: clubId, name: names[clubId] || 'Unknown', role: opts.clubRole || 'Vereinsmitglied' },
+    });
   });
 
   // Mock dashboard
@@ -161,11 +177,11 @@ function createMockServer() {
     res.status(201).json({ status: 'ok', messageId: 2 });
   });
 
-  // Mock sports
+  // Mock sports (with inline teams for Teamverwaltung/Activities)
   app.get('/api/clubs/:clubId/sports', (req, res) => {
     res.json({ status: 'ok', sports: [
-      { id: 1, name: 'Fußball' },
-      { id: 2, name: 'Handball' },
+      { id: 1, name: 'Fußball', teams: [{ id: 1, name: 'A-Mannschaft' }, { id: 2, name: 'B-Mannschaft' }] },
+      { id: 2, name: 'Handball', teams: [{ id: 3, name: 'Erste' }] },
     ] });
   });
 
@@ -180,7 +196,23 @@ function createMockServer() {
   // Mock venues
   app.get('/api/clubs/:clubId/venues', (req, res) => {
     res.json({ status: 'ok', venues: [
-      { id: 1, name: 'Hauptstadion', address: 'Sportstr. 1', coordinates: '51.0,10.0', map_link: 'https://maps.example.com' },
+      { id: 1, name: 'Hauptstadion', street: 'Sportstr.', house_number: '1', zip_code: '12345', city: 'Teststadt', address: 'Sportstr. 1', coordinates: '51.0,10.0', map_link: 'https://maps.example.com' },
+    ] });
+  });
+
+  // Mock games
+  app.get('/api/clubs/:clubId/teams/:teamId/games', (req, res) => {
+    res.json({ status: 'ok', games: [
+      { id: 1, date: '2024-06-15T15:00:00', opponent: 'FC Gegner', title: 'Testspiel' },
+      { id: 2, date: '2024-06-22T14:00:00', opponent: 'SV Rival', title: 'Ligaspiel' },
+    ] });
+  });
+
+  // Mock trainings
+  app.get('/api/clubs/:clubId/teams/:teamId/trainings', (req, res) => {
+    res.json({ status: 'ok', trainings: [
+      { id: 1, date: '2024-06-14T18:00:00', title: 'Dienstags-Training' },
+      { id: 2, date: '2024-06-16T10:00:00', title: 'Wochenend-Training' },
     ] });
   });
 
