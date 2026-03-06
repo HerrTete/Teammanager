@@ -11,6 +11,8 @@ let isPortalAdmin = false;
 let venuesCache = [];
 let notifInterval = null;
 let appInitialized = false;
+let pendingInviteCode = null;
+let pendingInviteData = null;
 
 // --- DB status ---
 fetch('/api/db-status')
@@ -46,6 +48,9 @@ function checkAuthStatus() {
         document.getElementById('app-main').style.display = '';
         document.querySelector('.container').classList.add('app-mode');
         initApp();
+        if (pendingInviteCode) {
+          handlePendingInvite();
+        }
       } else {
         banner.textContent = 'Nicht angemeldet.';
         logoutBtn.style.display = 'none';
@@ -53,6 +58,9 @@ function checkAuthStatus() {
         document.getElementById('app-main').style.display = 'none';
         document.querySelector('.container').classList.remove('app-mode');
         stopNotifPolling();
+        if (pendingInviteCode) {
+          document.getElementById('invitation-notice').style.display = '';
+        }
         if (data.pendingVerification) {
           // Activate the register tab without triggering the captcha/reset side-effects of switchTab
           document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'register'));
@@ -242,6 +250,81 @@ function initApp() {
   appInitialized = true;
   loadClubs();
   startNotifPolling();
+}
+
+// --- Invitation handling ---
+function checkInviteCode() {
+  var params = new URLSearchParams(window.location.search);
+  var code = params.get('code');
+  if (!code) return;
+  pendingInviteCode = code;
+  fetch('/api/invitations/code/' + encodeURIComponent(code))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.status === 'ok') {
+        pendingInviteData = data.invitation;
+        var noticeText = document.getElementById('invitation-notice-text');
+        if (noticeText) {
+          noticeText.textContent = 'Sie wurden eingeladen, dem Verein "' + (data.invitation.club_name || '') +
+            '" als ' + (data.invitation.role || '') + ' beizutreten. Bitte melden Sie sich an oder registrieren Sie sich, um die Einladung anzunehmen.';
+        }
+      }
+    })
+    .catch(function() {});
+}
+
+function handlePendingInvite() {
+  if (!pendingInviteCode) return;
+  var code = pendingInviteCode;
+  var showInviteModal = function(inv) {
+    if (!inv) return;
+    var bodyHtml = '<div class="app-form">' +
+      '<p>Sie wurden eingeladen, dem Verein <strong>' + escHtml(inv.club_name || '') + '</strong> als <strong>' + escHtml(inv.role || '') + '</strong> beizutreten.</p>';
+    if (inv.accepted) {
+      bodyHtml += '<p style="color:#888">Diese Einladung wurde bereits angenommen.</p>';
+    } else {
+      bodyHtml += '<div style="display:flex;gap:0.5rem;margin-top:1rem">' +
+        '<button class="btn btn-primary" id="btn-accept-inv">Einladung annehmen</button>' +
+        '<button class="btn btn-secondary" id="btn-decline-inv">Ablehnen</button>' +
+        '</div>';
+    }
+    bodyHtml += '</div>';
+    showModal('Einladung annehmen', bodyHtml);
+    if (!inv.accepted) {
+      document.getElementById('btn-accept-inv').addEventListener('click', function() {
+        api('/api/invitations/code/' + encodeURIComponent(code) + '/accept', { method: 'POST' })
+          .then(function() {
+            pendingInviteCode = null;
+            pendingInviteData = null;
+            history.replaceState(null, '', window.location.pathname);
+            document.getElementById('invitation-notice').style.display = 'none';
+            closeModal();
+            loadClubs();
+          })
+          .catch(function(e) { alert('Fehler: ' + (e.message || 'Fehler')); });
+      });
+      document.getElementById('btn-decline-inv').addEventListener('click', function() {
+        pendingInviteCode = null;
+        pendingInviteData = null;
+        history.replaceState(null, '', window.location.pathname);
+        document.getElementById('invitation-notice').style.display = 'none';
+        closeModal();
+      });
+    }
+  };
+  if (pendingInviteData) {
+    showInviteModal(pendingInviteData);
+  } else {
+    fetch('/api/invitations/code/' + encodeURIComponent(code))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.status === 'ok') {
+          pendingInviteData = data.invitation;
+          showInviteModal(data.invitation);
+        }
+      })
+      .catch(function() {});
+  }
 }
 
 function navigateTo(view) {
@@ -1226,6 +1309,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === this) closeModal();
   });
 
+  checkInviteCode();
   checkAuthStatus();
   loadCsrfToken().catch(err => console.error('CSRF token load failed:', err));
 });

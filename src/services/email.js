@@ -24,6 +24,7 @@ async function getMailTransporter() {
         console.log('  To:', opts.to);
         console.log('  Subject:', opts.subject);
         console.log('  Text:', opts.text);
+        if (opts.html) console.log('  HTML:', opts.html);
         return { messageId: 'dev-only' };
       },
     };
@@ -33,16 +34,22 @@ async function getMailTransporter() {
 
 const FROM_ADDRESS = process.env.SMTP_FROM || 'Teammanager <no-reply@teammanager.local>';
 
-async function sendNotificationEmail(to, subject, text) {
+async function sendNotificationEmail(to, subject, text, html) {
   const transporter = await getMailTransporter();
-  return transporter.sendMail({ from: FROM_ADDRESS, to, subject, text });
+  const mailOpts = { from: FROM_ADDRESS, to, subject, text };
+  if (html) mailOpts.html = html;
+  return transporter.sendMail(mailOpts);
 }
 
 async function sendInvitation(to, clubName, role, code) {
-  const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+  const baseUrl = process.env.APP_URL || 'https://dev.herrtete.de';
   const link = `${baseUrl}/invitation?code=${encodeURIComponent(code)}`;
   const text = `Sie wurden eingeladen, dem Verein "${clubName}" als ${role} beizutreten.\n\nKlicken Sie auf den folgenden Link, um die Einladung anzunehmen:\n${link}\n\nOder verwenden Sie den Code: ${code}`;
-  return sendNotificationEmail(to, `Teammanager – Einladung zu ${clubName}`, text);
+  const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const html = `<p>Sie wurden eingeladen, dem Verein <strong>${escHtml(clubName)}</strong> als <strong>${escHtml(role)}</strong> beizutreten.</p>` +
+    `<p><a href="${escHtml(link)}" style="display:inline-block;padding:0.6rem 1.2rem;background:#1a73e8;color:#fff;text-decoration:none;border-radius:5px">Einladung annehmen</a></p>` +
+    `<p style="color:#666;font-size:0.9rem">Oder verwenden Sie den Code: <strong>${escHtml(code)}</strong></p>`;
+  return sendNotificationEmail(to, `Teammanager – Einladung zu ${clubName}`, text, html);
 }
 
 async function sendAttendanceReminder(to, eventTitle, eventDate) {

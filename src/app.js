@@ -120,4 +120,9 @@ app.delete('/api/photos/:photoId', requireAuth, requireRole(['PortalAdmin', 'Ver
   });
 });
 
+// SPA catch-all: serve index.html for all non-API GET requests
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+});
+
 module.exports = app;
