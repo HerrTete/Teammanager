@@ -26,8 +26,14 @@ router.get('/', requireAuth, requireClubAccess, async (req, res) => {
 // POST /api/clubs/:clubId/teams/:teamId/players
 router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['PortalAdmin', 'VereinsAdmin', 'Trainer']), async (req, res) => {
   const { userId, name, jerseyNumber, managedBy } = req.body || {};
+  if (userId && name) {
+    return res.status(400).json({ status: 'error', message: 'Entweder Benutzer-ID oder Spielername angeben, nicht beides.' });
+  }
   if (!userId && (!name || typeof name !== 'string' || name.trim().length === 0)) {
     return res.status(400).json({ status: 'error', message: 'Benutzer-ID oder Spielername ist erforderlich.' });
+  }
+  if (!userId && !managedBy) {
+    return res.status(400).json({ status: 'error', message: 'Verwaltender Benutzer ist für verwaltete Spieler erforderlich.' });
   }
   try {
     const [result] = await pool.execute(
