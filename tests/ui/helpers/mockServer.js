@@ -100,6 +100,21 @@ function createMockServer() {
     ] });
   });
 
+  // Mock club detail
+  app.get('/api/clubs/:clubId', (req, res) => {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ status: 'error', message: 'Nicht angemeldet.' });
+    }
+    res.json({
+      status: 'ok',
+      club: {
+        id: parseInt(req.params.clubId),
+        name: 'FC Test',
+        created_at: '2024-01-01',
+      },
+    });
+  });
+
   // Mock dashboard
   app.get('/api/dashboard', (req, res) => {
     res.json({
@@ -164,8 +179,8 @@ function createMockServer() {
   // Mock sports
   app.get('/api/clubs/:clubId/sports', (req, res) => {
     res.json({ status: 'ok', sports: [
-      { id: 1, name: 'Fußball' },
-      { id: 2, name: 'Handball' },
+      { id: 1, name: 'Fußball', teams: [{ id: 1, name: 'A-Mannschaft' }, { id: 2, name: 'B-Mannschaft' }] },
+      { id: 2, name: 'Handball', teams: [] },
     ] });
   });
 
@@ -180,8 +195,92 @@ function createMockServer() {
   // Mock venues
   app.get('/api/clubs/:clubId/venues', (req, res) => {
     res.json({ status: 'ok', venues: [
-      { id: 1, name: 'Hauptstadion', address: 'Sportstr. 1', coordinates: '51.0,10.0', map_link: 'https://maps.example.com' },
+      { id: 1, name: 'Hauptstadion', zip_code: '12345', street: 'Sportstr.', house_number: '1', city: 'Berlin', link: 'https://example.com/stadion', google_maps_link: 'https://maps.google.com/?q=Stadion' },
     ] });
+  });
+
+  app.post('/api/clubs/:clubId/venues', (req, res) => {
+    const { name } = req.body || {};
+    if (!name || !name.trim()) {
+      return res.status(400).json({ status: 'error', message: 'Name ist erforderlich.' });
+    }
+    res.status(201).json({ status: 'ok', venueId: 2 });
+  });
+
+  app.put('/api/clubs/:clubId/venues/:venueId', (req, res) => {
+    const { name } = req.body || {};
+    if (!name || !name.trim()) {
+      return res.status(400).json({ status: 'error', message: 'Name ist erforderlich.' });
+    }
+    res.json({ status: 'ok', message: 'Spielstätte aktualisiert.' });
+  });
+
+  app.delete('/api/clubs/:clubId/venues/:venueId', (req, res) => {
+    res.json({ status: 'ok', message: 'Spielstätte gelöscht.' });
+  });
+
+  // Mock team detail
+  app.get('/api/clubs/:clubId/sports/:sportId/teams/:teamId', (req, res) => {
+    res.json({ status: 'ok', team: {
+      id: parseInt(req.params.teamId), name: 'A-Mannschaft', isAdmin: true, isTrainer: true,
+      trainers: [{ id: 1, user_id: 5, username: 'trainer1' }],
+      players: [{ id: 1, user_id: 10, username: 'spieler1', jersey_number: 7 }],
+    } });
+  });
+
+  // Mock games
+  app.get('/api/clubs/:clubId/teams/:teamId/games', (req, res) => {
+    res.json({ status: 'ok', games: [
+      { id: 1, title: 'Testspiel', date: '2024-06-15', kickoff_time: '15:00', meeting_time: '14:00', opponent: 'FC Gegner', info: 'Trikots mitbringen' },
+    ] });
+  });
+
+  app.post('/api/clubs/:clubId/teams/:teamId/games', (req, res) => {
+    const { title } = req.body || {};
+    if (!title || !title.trim()) {
+      return res.status(400).json({ status: 'error', message: 'Titel ist erforderlich.' });
+    }
+    res.status(201).json({ status: 'ok', gameId: 2 });
+  });
+
+  // Mock trainings
+  app.get('/api/clubs/:clubId/teams/:teamId/trainings', (req, res) => {
+    res.json({ status: 'ok', trainings: [
+      { id: 1, title: 'Dienstags-Training', date: '2024-06-14', time: '18:00', sport_id: 1 },
+    ] });
+  });
+
+  app.post('/api/clubs/:clubId/teams/:teamId/trainings', (req, res) => {
+    const { title } = req.body || {};
+    if (!title || !title.trim()) {
+      return res.status(400).json({ status: 'error', message: 'Titel ist erforderlich.' });
+    }
+    res.status(201).json({ status: 'ok', trainingId: 2 });
+  });
+
+  // Mock players
+  app.get('/api/clubs/:clubId/teams/:teamId/players', (req, res) => {
+    res.json({ status: 'ok', players: [
+      { id: 1, user_id: 10, name: null, jersey_number: 7, managed_by: null, username: 'spieler1', managed_by_username: null },
+      { id: 2, user_id: null, name: 'Kind Spieler', jersey_number: 9, managed_by: 5, username: null, managed_by_username: 'trainer1' },
+    ] });
+  });
+
+  app.post('/api/clubs/:clubId/sports/:sportId/teams/:teamId/players', (req, res) => {
+    res.status(201).json({ status: 'ok', message: 'Spieler hinzugefügt.' });
+  });
+
+  app.delete('/api/clubs/:clubId/sports/:sportId/teams/:teamId/players/:playerId', (req, res) => {
+    res.json({ status: 'ok', message: 'Spieler entfernt.' });
+  });
+
+  // Mock trainers
+  app.post('/api/clubs/:clubId/sports/:sportId/teams/:teamId/trainers', (req, res) => {
+    res.status(201).json({ status: 'ok', message: 'Trainer hinzugefügt.' });
+  });
+
+  app.delete('/api/clubs/:clubId/sports/:sportId/teams/:teamId/trainers/:userId', (req, res) => {
+    res.json({ status: 'ok', message: 'Trainer entfernt.' });
   });
 
   // Mock invitations
