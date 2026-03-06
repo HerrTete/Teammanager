@@ -105,7 +105,14 @@ function createMockServer() {
     if (!req.session || !req.session.userId) {
       return res.status(401).json({ status: 'error', message: 'Nicht angemeldet.' });
     }
-    res.json({ status: 'ok', club: { id: parseInt(req.params.clubId), name: 'FC Test', created_at: '2024-01-01', role: 'VereinsAdmin', isAdmin: true } });
+    res.json({
+      status: 'ok',
+      club: {
+        id: parseInt(req.params.clubId),
+        name: 'FC Test',
+        created_at: '2024-01-01',
+      },
+    });
   });
 
   // Mock dashboard
