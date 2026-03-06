@@ -1495,7 +1495,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-add-venue').addEventListener('click', showAddVenueModal);
   document.getElementById('btn-create-invitation').addEventListener('click', showInvitationModal);
   document.getElementById('btn-back-club').addEventListener('click', function() {
-    navigateTo(previousView === 'teamverwaltung' ? 'teamverwaltung' : 'club');
+    var validViews = ['teamverwaltung', 'activities', 'club'];
+    navigateTo(validViews.indexOf(previousView) !== -1 ? previousView : 'dashboard');
   });
   document.getElementById('btn-add-player').addEventListener('click', showAddPlayerModal);
   document.getElementById('btn-add-trainer').addEventListener('click', showAddTrainerModal);

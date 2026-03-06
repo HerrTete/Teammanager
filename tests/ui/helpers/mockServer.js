@@ -99,7 +99,7 @@ function createMockServer(options) {
       { id: 1, name: 'FC Test', created_at: '2024-01-01' },
       { id: 2, name: 'SV Muster', created_at: '2024-02-01' },
     ];
-    const clubs = clubBase.map(c => opts.clubRole ? Object.assign({}, c, { role: opts.clubRole }) : c);
+    const clubs = clubBase.map(c => Object.assign({}, c, { role: opts.clubRole || null }));
     res.json({ status: 'ok', isPortalAdmin: opts.isPortalAdmin, clubs });
   });
 
