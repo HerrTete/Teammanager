@@ -26,7 +26,7 @@ test.describe('Role-based Navigation', () => {
   });
 
   test('PortalAdmin sees Vereinsverwaltung button', async ({ page }) => {
-    const port = 3460;
+    const port = 3470;
     const srv = await startServer({ isPortalAdmin: true, clubRole: 'PortalAdmin' }, port);
     servers.push(srv);
 
@@ -37,7 +37,7 @@ test.describe('Role-based Navigation', () => {
   });
 
   test('VereinsAdmin sees Teamverwaltung and Aktivitätsverwaltung but not Vereinsverwaltung', async ({ page }) => {
-    const port = 3463;
+    const port = 3471;
     const srv = await startServer({ isPortalAdmin: false, clubRole: 'VereinsAdmin' }, port);
     servers.push(srv);
 
@@ -48,7 +48,7 @@ test.describe('Role-based Navigation', () => {
   });
 
   test('Trainer sees Aktivitätsverwaltung but not Vereinsverwaltung or Teamverwaltung', async ({ page }) => {
-    const port = 3464;
+    const port = 3472;
     const srv = await startServer({ isPortalAdmin: false, clubRole: 'Trainer' }, port);
     servers.push(srv);
 
@@ -59,7 +59,7 @@ test.describe('Role-based Navigation', () => {
   });
 
   test('Regular member sees no management nav buttons', async ({ page }) => {
-    const port = 3465;
+    const port = 3473;
     const srv = await startServer({ isPortalAdmin: false, clubRole: 'Vereinsmitglied' }, port);
     servers.push(srv);
 

@@ -63,7 +63,7 @@ function checkAuthStatus() {
           document.getElementById('invitation-notice').style.display = '';
         }
         if (data.pendingVerification) {
-          // Activate the register tab without triggering the captcha/reset side-effects of switchTab
+          // Activate the register tab without triggering the [REDACTED]/reset side-effects of switchTab
           document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'register'));
           document.getElementById('tab-login').classList.remove('active');
           document.getElementById('tab-register').classList.add('active');
@@ -84,19 +84,19 @@ function checkAuthStatus() {
 
 // --- CAPTCHA (also provides csrfToken) ---
 function loadCaptcha() {
-  fetch('/api/auth/captcha')
+  fetch('/api/auth/[REDACTED]')
     .then(r => r.json())
     .then(data => {
-      document.getElementById('captcha-question').textContent = data.question;
-      document.getElementById('captcha-answer').value = '';
+      document.getElementById('[REDACTED]-question').textContent = data.question;
+      document.getElementById('[REDACTED]-answer').value = '';
       if (data.csrfToken) csrfToken = data.csrfToken;
     })
     .catch(() => {
-      document.getElementById('captcha-question').textContent = 'Fehler beim Laden.';
+      document.getElementById('[REDACTED]-question').textContent = 'Fehler beim Laden.';
     });
 }
 
-// --- Load CSRF token (used for login without captcha) ---
+// --- Load CSRF token (used for login without [REDACTED]) ---
 function loadCsrfToken() {
   return fetch('/api/auth/csrf-token')
     .then(r => r.json())
@@ -154,11 +154,11 @@ function doRegister(e) {
   const username = document.getElementById('reg-user').value;
   const email = document.getElementById('reg-email').value;
   const password = document.getElementById('reg-pw').value;
-  const captcha = document.getElementById('captcha-answer').value;
+  const [REDACTED] = document.getElementById('[REDACTED]-answer').value;
   fetch('/api/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-    body: JSON.stringify({ username, email, password, captcha }),
+    body: JSON.stringify({ username, email, password, [REDACTED] }),
   })
     .then(r => r.json())
     .then(data => {
@@ -585,7 +585,7 @@ function loadClubData() {
   api('/api/clubs/' + currentClubId).then(function(data) {
     var club = data.club || data;
     document.getElementById('club-name').textContent = club.name || 'Verein';
-    var isAdmin = club.role === 'VereinsAdmin' || club.isAdmin;
+    var isAdmin = club.role === 'VereinsAdmin' || club.role === 'PortalAdmin' || club.isAdmin;
     var isTrainer = club.role === 'Trainer';
     document.getElementById('btn-edit-club').style.display = isAdmin ? '' : 'none';
     document.getElementById('club-logo-upload').style.display = isAdmin ? '' : 'none';
@@ -656,9 +656,10 @@ function loadVenues() {
     list.innerHTML = '';
     venues.forEach(function(v) {
       var li = document.createElement('li');
-      var addrParts = [v.street, v.house_number, v.zip_code, v.city].filter(Boolean);
-      var addrStr = addrParts.length > 0 ? addrParts.join(' ') : (v.address || '');
-      li.innerHTML = '<span>' + escHtml(v.name) + (addrStr ? ' – ' + escHtml(addrStr) : '') + '</span><div></div>';
+      var addrParts = [v.street, v.house_number].filter(Boolean).join(' ');
+      var cityParts = [v.zip_code, v.city].filter(Boolean).join(' ');
+      var fullAddr = [addrParts, cityParts].filter(Boolean).join(', ');
+      li.innerHTML = '<span>' + escHtml(v.name) + (fullAddr ? ' – ' + escHtml(fullAddr) : '') + '</span><div></div>';
       var editBtn = document.createElement('button');
       editBtn.className = 'btn btn-sm btn-secondary';
       editBtn.textContent = '✎';
@@ -774,8 +775,7 @@ function showAddTeamModal(sportId) {
 
 function showAddVenueModal() {
   showModal('Spielstätte hinzufügen',
-    '<div class="app-form">' +
-    '<div class="form-group"><label>Name</label><input type="text" id="modal-venue-name"/></div>' +
+    '<div class="app-form"><div class="form-group"><label>Name</label><input type="text" id="modal-venue-name"/></div>' +
     '<div class="form-group"><label>Straße</label><input type="text" id="modal-venue-street"/></div>' +
     '<div class="form-group"><label>Hausnummer</label><input type="text" id="modal-venue-house-number"/></div>' +
     '<div class="form-group"><label>PLZ</label><input type="text" id="modal-venue-zip"/></div>' +
@@ -786,16 +786,15 @@ function showAddVenueModal() {
   document.getElementById('modal-venue-submit').addEventListener('click', function() {
     var name = document.getElementById('modal-venue-name').value.trim();
     if (!name) return;
-    var body = {
+    api('/api/clubs/' + currentClubId + '/venues', { method: 'POST', body: {
       name: name,
-      street: document.getElementById('modal-venue-street').value.trim(),
-      house_number: document.getElementById('modal-venue-house-number').value.trim(),
-      zip_code: document.getElementById('modal-venue-zip').value.trim(),
-      city: document.getElementById('modal-venue-city').value.trim(),
-      link: document.getElementById('modal-venue-link').value.trim(),
-      google_maps_link: document.getElementById('modal-venue-gmaps').value.trim()
-    };
-    api('/api/clubs/' + currentClubId + '/venues', { method: 'POST', body: body }).then(function() {
+      street: document.getElementById('modal-venue-street').value.trim() || undefined,
+      house_number: document.getElementById('modal-venue-house-number').value.trim() || undefined,
+      zip_code: document.getElementById('modal-venue-zip').value.trim() || undefined,
+      city: document.getElementById('modal-venue-city').value.trim() || undefined,
+      link: document.getElementById('modal-venue-link').value.trim() || undefined,
+      google_maps_link: document.getElementById('modal-venue-gmaps').value.trim() || undefined,
+    } }).then(function() {
       closeModal(); loadVenues(); loadTvVenues();
     }).catch(function(e) { alert('Fehler: ' + (e.message || 'Fehler')); });
   });
@@ -805,28 +804,33 @@ function showEditVenueModal(venueId) {
   var v = venuesCache.find(function(x) { return getId(x) == venueId; });
   if (!v) return;
   showModal('Spielstätte bearbeiten',
-    '<div class="app-form">' +
-    '<div class="form-group"><label>Name</label><input type="text" id="modal-venue-name" value="' + escHtml(v.name) + '"/></div>' +
-    '<div class="form-group"><label>Straße</label><input type="text" id="modal-venue-street" value="' + escHtml(v.street || '') + '"/></div>' +
-    '<div class="form-group"><label>Hausnummer</label><input type="text" id="modal-venue-house-number" value="' + escHtml(v.house_number || '') + '"/></div>' +
-    '<div class="form-group"><label>PLZ</label><input type="text" id="modal-venue-zip" value="' + escHtml(v.zip_code || '') + '"/></div>' +
-    '<div class="form-group"><label>Ort</label><input type="text" id="modal-venue-city" value="' + escHtml(v.city || '') + '"/></div>' +
-    '<div class="form-group"><label>Link</label><input type="text" id="modal-venue-link" value="' + escHtml(v.link || '') + '"/></div>' +
-    '<div class="form-group"><label>Google Maps Link</label><input type="text" id="modal-venue-gmaps" value="' + escHtml(v.google_maps_link || '') + '"/></div>' +
+    '<div class="app-form"><div class="form-group"><label>Name</label>' +
+    '<input type="text" id="modal-venue-name" value="' + escHtml(v.name) + '"/></div>' +
+    '<div class="form-group"><label>Straße</label>' +
+    '<input type="text" id="modal-venue-street" value="' + escHtml(v.street || '') + '"/></div>' +
+    '<div class="form-group"><label>Hausnummer</label>' +
+    '<input type="text" id="modal-venue-house-number" value="' + escHtml(v.house_number || '') + '"/></div>' +
+    '<div class="form-group"><label>PLZ</label>' +
+    '<input type="text" id="modal-venue-zip" value="' + escHtml(v.zip_code || '') + '"/></div>' +
+    '<div class="form-group"><label>Ort</label>' +
+    '<input type="text" id="modal-venue-city" value="' + escHtml(v.city || '') + '"/></div>' +
+    '<div class="form-group"><label>Link</label>' +
+    '<input type="text" id="modal-venue-link" value="' + escHtml(v.link || '') + '"/></div>' +
+    '<div class="form-group"><label>Google Maps Link</label>' +
+    '<input type="text" id="modal-venue-gmaps" value="' + escHtml(v.google_maps_link || '') + '"/></div>' +
     '<button class="btn btn-primary" id="modal-venue-submit">Speichern</button></div>');
   document.getElementById('modal-venue-submit').addEventListener('click', function() {
     var name = document.getElementById('modal-venue-name').value.trim();
     if (!name) return;
-    var body = {
+    api('/api/clubs/' + currentClubId + '/venues/' + venueId, { method: 'PUT', body: {
       name: name,
-      street: document.getElementById('modal-venue-street').value.trim(),
-      house_number: document.getElementById('modal-venue-house-number').value.trim(),
-      zip_code: document.getElementById('modal-venue-zip').value.trim(),
-      city: document.getElementById('modal-venue-city').value.trim(),
-      link: document.getElementById('modal-venue-link').value.trim(),
-      google_maps_link: document.getElementById('modal-venue-gmaps').value.trim()
-    };
-    api('/api/clubs/' + currentClubId + '/venues/' + venueId, { method: 'PUT', body: body }).then(function() {
+      street: document.getElementById('modal-venue-street').value.trim() || undefined,
+      house_number: document.getElementById('modal-venue-house-number').value.trim() || undefined,
+      zip_code: document.getElementById('modal-venue-zip').value.trim() || undefined,
+      city: document.getElementById('modal-venue-city').value.trim() || undefined,
+      link: document.getElementById('modal-venue-link').value.trim() || undefined,
+      google_maps_link: document.getElementById('modal-venue-gmaps').value.trim() || undefined,
+    } }).then(function() {
       closeModal(); loadVenues(); loadTvVenues();
     }).catch(function(e) { alert('Fehler: ' + (e.message || 'Fehler')); });
   });
@@ -1007,26 +1011,28 @@ function showAddGameModal() {
 function renderGameForm(venueOpts) {
   showModal('Spiel hinzufügen',
     '<div class="app-form">' +
-    '<div class="form-group"><label>Titel</label><input type="text" id="modal-game-title"/></div>' +
+    '<div class="form-group"><label>Titel</label><input type="text" id="modal-game-title" placeholder="z.B. Ligaspiel"/></div>' +
     '<div class="form-group"><label>Gegner</label><input type="text" id="modal-game-opponent"/></div>' +
-    '<div class="form-group"><label>Datum</label><input type="datetime-local" id="modal-game-date"/></div>' +
-    '<div class="form-group"><label>Anpfiff (Uhrzeit)</label><input type="text" id="modal-game-kickoff" placeholder="z.B. 15:00"/></div>' +
-    '<div class="form-group"><label>Treffen (Uhrzeit)</label><input type="text" id="modal-game-meeting" placeholder="z.B. 14:00"/></div>' +
-    '<div class="form-group"><label>Infos (Freitext)</label><textarea id="modal-game-info" rows="3"></textarea></div>' +
+    '<div class="form-group"><label>Datum</label><input type="date" id="modal-game-date"/></div>' +
+    '<div class="form-group"><label>Anpfiff</label><input type="time" id="modal-game-kickoff"/></div>' +
+    '<div class="form-group"><label>Treffen</label><input type="time" id="modal-game-meeting"/></div>' +
+    '<div class="form-group"><label>Infos</label><textarea id="modal-game-info" rows="3"></textarea></div>' +
     (venueOpts ? '<div class="form-group"><label>Spielstätte</label><select id="modal-game-venue">' + venueOpts + '</select></div>' : '') +
-    '<div class="form-group"><label>Ort (Freitext, alternativ zur Spielstätte)</label><input type="text" id="modal-game-location-text"/></div>' +
+    '<div class="form-group"><label>Ort (Freitext)</label><input type="text" id="modal-game-location-text" placeholder="Alternative Ortsangabe"/></div>' +
     '<button class="btn btn-primary" id="modal-game-submit">Erstellen</button></div>');
   document.getElementById('modal-game-submit').addEventListener('click', function() {
+    var title = document.getElementById('modal-game-title').value.trim();
+    var opponent = document.getElementById('modal-game-opponent').value.trim();
     var date = document.getElementById('modal-game-date').value;
-    if (!date) { alert('Bitte Datum angeben.'); return; }
+    if (!title) { alert('Bitte Titel angeben.'); return; }
     var body = {
-      title: document.getElementById('modal-game-title').value.trim(),
-      opponent: document.getElementById('modal-game-opponent').value.trim(),
-      date: date,
-      kickoff_time: document.getElementById('modal-game-kickoff').value.trim(),
-      meeting_time: document.getElementById('modal-game-meeting').value.trim(),
-      info: document.getElementById('modal-game-info').value.trim(),
-      location_text: document.getElementById('modal-game-location-text').value.trim()
+      title: title,
+      opponent: opponent || undefined,
+      date: date || undefined,
+      kickoff_time: document.getElementById('modal-game-kickoff').value || undefined,
+      meeting_time: document.getElementById('modal-game-meeting').value || undefined,
+      info: document.getElementById('modal-game-info').value.trim() || undefined,
+      location_text: document.getElementById('modal-game-location-text').value.trim() || undefined,
     };
     var venueEl = document.getElementById('modal-game-venue');
     if (venueEl && venueEl.value) body.venue_id = venueEl.value;
@@ -1136,9 +1142,10 @@ function loadTvVenues() {
     list.innerHTML = '';
     venues.forEach(function(v) {
       var li = document.createElement('li');
-      var addrParts = [v.street, v.house_number, v.zip_code, v.city].filter(Boolean);
-      var addrStr = addrParts.length > 0 ? addrParts.join(' ') : (v.address || '');
-      li.innerHTML = '<span>' + escHtml(v.name) + (addrStr ? ' – ' + escHtml(addrStr) : '') + '</span><div></div>';
+      var addrParts = [v.street, v.house_number].filter(Boolean).join(' ');
+      var cityParts = [v.zip_code, v.city].filter(Boolean).join(' ');
+      var fullAddr = [addrParts, cityParts].filter(Boolean).join(', ');
+      li.innerHTML = '<span>' + escHtml(v.name) + (fullAddr ? ' – ' + escHtml(fullAddr) : '') + '</span><div></div>';
       var editBtn = document.createElement('button');
       editBtn.className = 'btn btn-sm btn-secondary';
       editBtn.textContent = '✎';
@@ -1482,7 +1489,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('register-form').addEventListener('submit', doRegister);
   document.getElementById('verify-form').addEventListener('submit', doVerifyEmail);
   document.getElementById('logout-btn').addEventListener('click', logout);
-  document.getElementById('captcha-reload').addEventListener('click', loadCaptcha);
+  document.getElementById('[REDACTED]-reload').addEventListener('click', loadCaptcha);
 
   // --- SPA event listeners ---
   document.querySelectorAll('#app-nav .nav-btn').forEach(function(btn) {

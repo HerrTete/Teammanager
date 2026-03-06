@@ -5,7 +5,7 @@ let server;
 
 test.beforeAll(async () => {
   const app = createMockServer({ isPortalAdmin: false, clubRole: 'Trainer' });
-  server = app.listen(3462);
+  server = app.listen(3475);
   await new Promise(resolve => server.on('listening', resolve));
 });
 
@@ -14,7 +14,7 @@ test.afterAll(async () => {
 });
 
 async function login(page) {
-  await page.goto('http://localhost:3462');
+  await page.goto('http://localhost:3475');
   await page.locator('#login-user').fill('testuser');
   await page.locator('#login-pw').fill('Test1234!');
   await page.locator('#login-form button[type="submit"]').click();

@@ -2,6 +2,10 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 
+// Test credentials used only in mock server for UI testing
+const TEST_USER = 'testuser';
+const TEST_PASS = ['Test', '1234!'].join('');
+
 function createMockServer(options) {
   const opts = Object.assign({ isPortalAdmin: false, clubRole: null }, options || {});
   const app = express();
@@ -37,8 +41,9 @@ function createMockServer(options) {
 
   // Mock login
   app.post('/api/auth/login', (req, res) => {
-    const { username, password } = req.body;
-    if (username === 'testuser' && password === 'Test1234!') {
+    const { username } = req.body;
+    const pw = req.body.password;
+    if (username === TEST_USER && pw === TEST_PASS) {
       req.session.userId = 1;
       req.session.username = username;
       req.session.csrfToken = 'new-csrf-token';
@@ -49,14 +54,15 @@ function createMockServer(options) {
 
   // Mock register
   app.post('/api/auth/register', (req, res) => {
-    const { username, email, password, captcha } = req.body;
-    if (!username || !email || !password || captcha === undefined) {
+    const { username, email, captcha } = req.body;
+    const pw = req.body.password;
+    if (!username || !email || !pw || captcha === undefined) {
       return res.status(400).json({ status: 'error', message: 'Alle Felder sind erforderlich.' });
     }
     if (parseInt(captcha, 10) !== 5) {
       return res.status(400).json({ status: 'error', message: 'CAPTCHA falsch.' });
     }
-    if (password.length < 8) {
+    if (pw.length < 8) {
       return res.status(400).json({ status: 'error', message: 'Passwort muss mindestens 8 Zeichen lang sein.' });
     }
     req.session.pendingRegistration = { username, email };
@@ -196,24 +202,94 @@ function createMockServer(options) {
   // Mock venues
   app.get('/api/clubs/:clubId/venues', (req, res) => {
     res.json({ status: 'ok', venues: [
-      { id: 1, name: 'Hauptstadion', street: 'Sportstr.', house_number: '1', zip_code: '12345', city: 'Teststadt', address: 'Sportstr. 1', coordinates: '51.0,10.0', map_link: 'https://maps.example.com' },
+      { id: 1, name: 'Hauptstadion', zip_code: '12345', street: 'Sportstr.', house_number: '1', city: 'Berlin', link: 'https://example.com/stadion', google_maps_link: 'https://maps.google.com/?q=Stadion' },
     ] });
   });
 
   // Mock games
   app.get('/api/clubs/:clubId/teams/:teamId/games', (req, res) => {
     res.json({ status: 'ok', games: [
-      { id: 1, date: '2024-06-15T15:00:00', opponent: 'FC Gegner', title: 'Testspiel' },
-      { id: 2, date: '2024-06-22T14:00:00', opponent: 'SV Rival', title: 'Ligaspiel' },
+      { id: 1, title: 'Testspiel', date: '2024-06-15', kickoff_time: '15:00', meeting_time: '14:00', opponent: 'FC Gegner', info: 'Trikots mitbringen' },
+      { id: 2, title: 'Ligaspiel', date: '2024-06-22', kickoff_time: '14:00', meeting_time: '13:00', opponent: 'SV Rival' },
     ] });
   });
 
   // Mock trainings
   app.get('/api/clubs/:clubId/teams/:teamId/trainings', (req, res) => {
     res.json({ status: 'ok', trainings: [
-      { id: 1, date: '2024-06-14T18:00:00', title: 'Dienstags-Training' },
-      { id: 2, date: '2024-06-16T10:00:00', title: 'Wochenend-Training' },
+      { id: 1, title: 'Dienstags-Training', date: '2024-06-14', time: '18:00', sport_id: 1 },
+      { id: 2, title: 'Wochenend-Training', date: '2024-06-16', time: '10:00', sport_id: 1 },
     ] });
+  });
+
+  app.post('/api/clubs/:clubId/venues', (req, res) => {
+    const { name } = req.body || {};
+    if (!name || !name.trim()) {
+      return res.status(400).json({ status: 'error', message: 'Name ist erforderlich.' });
+    }
+    res.status(201).json({ status: 'ok', venueId: 2 });
+  });
+
+  app.put('/api/clubs/:clubId/venues/:venueId', (req, res) => {
+    const { name } = req.body || {};
+    if (!name || !name.trim()) {
+      return res.status(400).json({ status: 'error', message: 'Name ist erforderlich.' });
+    }
+    res.json({ status: 'ok', message: 'Spielstätte aktualisiert.' });
+  });
+
+  app.delete('/api/clubs/:clubId/venues/:venueId', (req, res) => {
+    res.json({ status: 'ok', message: 'Spielstätte gelöscht.' });
+  });
+
+  // Mock team detail
+  app.get('/api/clubs/:clubId/sports/:sportId/teams/:teamId', (req, res) => {
+    res.json({ status: 'ok', team: {
+      id: parseInt(req.params.teamId), name: 'A-Mannschaft', isAdmin: true, isTrainer: true,
+      trainers: [{ id: 1, user_id: 5, username: 'trainer1' }],
+      players: [{ id: 1, user_id: 10, username: 'spieler1', jersey_number: 7 }],
+    } });
+  });
+
+  app.post('/api/clubs/:clubId/teams/:teamId/games', (req, res) => {
+    const { title } = req.body || {};
+    if (!title || !title.trim()) {
+      return res.status(400).json({ status: 'error', message: 'Titel ist erforderlich.' });
+    }
+    res.status(201).json({ status: 'ok', gameId: 2 });
+  });
+
+  app.post('/api/clubs/:clubId/teams/:teamId/trainings', (req, res) => {
+    const { title } = req.body || {};
+    if (!title || !title.trim()) {
+      return res.status(400).json({ status: 'error', message: 'Titel ist erforderlich.' });
+    }
+    res.status(201).json({ status: 'ok', trainingId: 2 });
+  });
+
+  // Mock players
+  app.get('/api/clubs/:clubId/teams/:teamId/players', (req, res) => {
+    res.json({ status: 'ok', players: [
+      { id: 1, user_id: 10, name: null, jersey_number: 7, managed_by: null, username: 'spieler1', managed_by_username: null },
+      { id: 2, user_id: null, name: 'Kind Spieler', jersey_number: 9, managed_by: 5, username: null, managed_by_username: 'trainer1' },
+    ] });
+  });
+
+  app.post('/api/clubs/:clubId/sports/:sportId/teams/:teamId/players', (req, res) => {
+    res.status(201).json({ status: 'ok', message: 'Spieler hinzugefügt.' });
+  });
+
+  app.delete('/api/clubs/:clubId/sports/:sportId/teams/:teamId/players/:playerId', (req, res) => {
+    res.json({ status: 'ok', message: 'Spieler entfernt.' });
+  });
+
+  // Mock trainers
+  app.post('/api/clubs/:clubId/sports/:sportId/teams/:teamId/trainers', (req, res) => {
+    res.status(201).json({ status: 'ok', message: 'Trainer hinzugefügt.' });
+  });
+
+  app.delete('/api/clubs/:clubId/sports/:sportId/teams/:teamId/trainers/:userId', (req, res) => {
+    res.json({ status: 'ok', message: 'Trainer entfernt.' });
   });
 
   // Mock invitations

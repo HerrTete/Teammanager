@@ -5,7 +5,7 @@ let server;
 
 test.beforeAll(async () => {
   const app = createMockServer({ isPortalAdmin: false, clubRole: 'VereinsAdmin' });
-  server = app.listen(3461);
+  server = app.listen(3474);
   await new Promise(resolve => server.on('listening', resolve));
 });
 
@@ -14,7 +14,7 @@ test.afterAll(async () => {
 });
 
 async function login(page) {
-  await page.goto('http://localhost:3461');
+  await page.goto('http://localhost:3474');
   await page.locator('#login-user').fill('testuser');
   await page.locator('#login-pw').fill('Test1234!');
   await page.locator('#login-form button[type="submit"]').click();
@@ -50,6 +50,6 @@ test.describe('Teamverwaltung View', () => {
     await page.locator('#nav-teamverwaltung-btn').click();
     await expect(page.locator('#tv-venues-list')).toContainText('Hauptstadion');
     await expect(page.locator('#tv-venues-list')).toContainText('Sportstr.');
-    await expect(page.locator('#tv-venues-list')).toContainText('Teststadt');
+    await expect(page.locator('#tv-venues-list')).toContainText('Berlin');
   });
 });
