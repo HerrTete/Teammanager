@@ -40,6 +40,18 @@ describe('Invitation Routes', () => {
       expect(res.status).toBe(401);
     });
 
+    test('VereinsAdmin cannot invite as PortalAdmin', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []])                          // requireClubAccess: PortalAdmin check
+        .mockResolvedValueOnce([[{ id: 1 }], []])                  // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ role: 'VereinsAdmin', club_id: 1 }], []]); // requireRole
+      const res = await authAgent.post('/api/clubs/1/invitations')
+        .set('X-CSRF-Token', csrfToken)
+        .send({ email: 'new@example.com', role: 'PortalAdmin' });
+      expect(res.status).toBe(403);
+      expect(res.body.message).toContain('Portal-Admin');
+    });
+
     test('creates invitation with valid data', async () => {
       mockPool.execute
         .mockResolvedValueOnce([[], []])
