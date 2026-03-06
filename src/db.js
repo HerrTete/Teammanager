@@ -222,6 +222,7 @@ async function initDb() {
       CREATE TABLE IF NOT EXISTS attendance (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
+        player_id INT,
         event_type ENUM('game','training') NOT NULL,
         event_id INT NOT NULL,
         status ENUM('pending','accepted','declined') DEFAULT 'pending',
@@ -229,7 +230,8 @@ async function initDb() {
         escalated BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
       )
     `);
 

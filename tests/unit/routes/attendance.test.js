@@ -72,5 +72,43 @@ describe('Attendance Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.message).toContain('gespeichert');
     });
+
+    test('accepts RSVP for managed player', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyEventBelongsToClub
+        .mockResolvedValueOnce([[{ id: 5, managed_by: 1 }], []])  // player lookup
+        .mockResolvedValueOnce([[], []])            // no existing attendance
+        .mockResolvedValueOnce([{ insertId: 2 }, []]); // insert
+      const res = await authAgent.post('/api/clubs/1/events/game/1/attendance')
+        .set('X-CSRF-Token', csrfToken).send({ status: 'accepted', player_id: 5 });
+      expect(res.status).toBe(200);
+      expect(res.body.message).toContain('gespeichert');
+    });
+
+    test('rejects RSVP for player not managed by user', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyEventBelongsToClub
+        .mockResolvedValueOnce([[{ id: 5, managed_by: 999 }], []]); // player managed by someone else
+      const res = await authAgent.post('/api/clubs/1/events/game/1/attendance')
+        .set('X-CSRF-Token', csrfToken).send({ status: 'accepted', player_id: 5 });
+      expect(res.status).toBe(403);
+      expect(res.body.message).toContain('Keine Berechtigung');
+    });
+
+    test('returns 404 for non-existent managed player', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyEventBelongsToClub
+        .mockResolvedValueOnce([[], []]);           // player not found
+      const res = await authAgent.post('/api/clubs/1/events/game/1/attendance')
+        .set('X-CSRF-Token', csrfToken).send({ status: 'accepted', player_id: 999 });
+      expect(res.status).toBe(404);
+      expect(res.body.message).toContain('Spieler nicht gefunden');
+    });
   });
 });
