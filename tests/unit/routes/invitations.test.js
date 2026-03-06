@@ -40,6 +40,30 @@ describe('Invitation Routes', () => {
       expect(res.status).toBe(401);
     });
 
+    test('validates email format', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []])                          // requireClubAccess: PortalAdmin check
+        .mockResolvedValueOnce([[{ id: 1 }], []])                  // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ role: 'VereinsAdmin' }], []]); // requireRole
+      const res = await authAgent.post('/api/clubs/1/invitations')
+        .set('X-CSRF-Token', csrfToken)
+        .send({ email: 'not-an-email', role: 'Spieler' });
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('E-Mail');
+    });
+
+    test('validates role', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []])                          // requireClubAccess: PortalAdmin check
+        .mockResolvedValueOnce([[{ id: 1 }], []])                  // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ role: 'VereinsAdmin' }], []]); // requireRole
+      const res = await authAgent.post('/api/clubs/1/invitations')
+        .set('X-CSRF-Token', csrfToken)
+        .send({ email: 'new@example.com', role: 'InvalidRole' });
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('Rolle');
+    });
+
     test('VereinsAdmin cannot invite as PortalAdmin', async () => {
       mockPool.execute
         .mockResolvedValueOnce([[], []])                          // requireClubAccess: PortalAdmin check
@@ -50,6 +74,19 @@ describe('Invitation Routes', () => {
         .send({ email: 'new@example.com', role: 'PortalAdmin' });
       expect(res.status).toBe(403);
       expect(res.body.message).toContain('Portal-Admin');
+    });
+
+    test('PortalAdmin can invite as PortalAdmin', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[{ id: 1 }], []])                  // requireClubAccess: PortalAdmin check (IS PortalAdmin)
+        .mockResolvedValueOnce([[{ role: 'PortalAdmin' }], []])    // requireRole
+        .mockResolvedValueOnce([{ insertId: 1 }, []])              // INSERT invitation
+        .mockResolvedValueOnce([[{ name: 'FC Test' }], []]);       // club name lookup
+      const res = await authAgent.post('/api/clubs/1/invitations')
+        .set('X-CSRF-Token', csrfToken)
+        .send({ email: 'admin@example.com', role: 'PortalAdmin' });
+      expect(res.status).toBe(201);
+      expect(res.body.code).toBeDefined();
     });
 
     test('creates invitation with valid data', async () => {
@@ -101,6 +138,24 @@ describe('Invitation Routes', () => {
         .set('X-CSRF-Token', csrfToken);
       expect(res.status).toBe(200);
       expect(res.body.message).toContain('angenommen');
+    });
+
+    test('rejects already accepted invitation', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[{ id: 1, code: 'c', role: 'Spieler', club_id: 1, accepted: true }], []]);
+      const res = await authAgent.post('/api/invitations/code/already-used/accept')
+        .set('X-CSRF-Token', csrfToken);
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('bereits angenommen');
+    });
+
+    test('returns 404 for invalid code', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []]);
+      const res = await authAgent.post('/api/invitations/code/nonexistent/accept')
+        .set('X-CSRF-Token', csrfToken);
+      expect(res.status).toBe(404);
+      expect(res.body.message).toContain('nicht gefunden');
     });
   });
 });
