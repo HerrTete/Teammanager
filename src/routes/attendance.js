@@ -20,7 +20,7 @@ router.get('/', requireAuth, requireClubAccess, async (req, res) => {
       return res.status(403).json({ status: 'error', message: 'Event gehört nicht zu diesem Verein.' });
     }
     const [attendance] = await pool.execute(
-      'SELECT a.id, a.user_id, a.player_id, a.status, a.reminded, a.escalated, a.created_at, a.updated_at, u.username, p.name AS player_name FROM attendance a INNER JOIN users u ON a.user_id = u.id LEFT JOIN players p ON a.player_id = p.id WHERE a.event_type = ? AND a.event_id = ?',
+      'SELECT a.id, a.user_id, a.player_id, a.status, a.reminded, a.escalated, a.created_at, a.updated_at, u.username, p.name AS player_name FROM attendance a LEFT JOIN users u ON a.user_id = u.id LEFT JOIN players p ON a.player_id = p.id WHERE a.event_type = ? AND a.event_id = ?',
       [eventType, eventId]
     );
     return res.json({ status: 'ok', attendance });

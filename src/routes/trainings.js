@@ -39,15 +39,21 @@ router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['Por
       [title.trim(), date || null, time || null, location_text || null, venue_id || null, sport_id || null, req.params.teamId, req.session.userId]
     );
     await pool.execute('INSERT INTO training_teams (training_id, team_id) VALUES (?, ?)', [result.insertId, req.params.teamId]);
+    const skippedTeamIds = [];
     if (Array.isArray(additional_team_ids)) {
       for (const additionalTeamId of additional_team_ids) {
         if (!(await verifyTeamBelongsToClub(pool, additionalTeamId, req.params.clubId))) {
+          skippedTeamIds.push(additionalTeamId);
           continue;
         }
         await pool.execute('INSERT INTO training_teams (training_id, team_id) VALUES (?, ?)', [result.insertId, additionalTeamId]);
       }
     }
-    return res.status(201).json({ status: 'ok', trainingId: result.insertId });
+    const response = { status: 'ok', trainingId: result.insertId };
+    if (skippedTeamIds.length > 0) {
+      response.skippedTeamIds = skippedTeamIds;
+    }
+    return res.status(201).json(response);
   } catch (err) {
     console.error('Create training error:', err.message);
     return res.status(500).json({ status: 'error', message: 'Interner Serverfehler.' });
