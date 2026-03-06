@@ -249,6 +249,11 @@
 
     <!-- Auth forms (hidden when logged in) -->
     <div id="auth-forms">
+      <!-- Invitation notice (shown when arriving via invite link) -->
+      <div id="invitation-notice" style="display:none; margin-bottom:1rem; padding:1rem; background:#e8f0fe; border-radius:6px; text-align:left;">
+        <strong>🎉 Einladung erhalten</strong>
+        <p id="invitation-notice-text" style="margin:0.5rem 0 0; color:#333">Sie haben eine Einladung. Bitte melden Sie sich an oder registrieren Sie sich, um die Einladung anzunehmen.</p>
+      </div>
       <div class="tabs">
         <button class="tab-btn active" data-tab="login">Anmelden</button>
         <button class="tab-btn" data-tab="register">Registrieren</button>
