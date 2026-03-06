@@ -10,7 +10,7 @@ const router = express.Router({ mergeParams: true });
 router.get('/', requireAuth, requireClubAccess, async (req, res) => {
   try {
     const [venues] = await pool.execute(
-      'SELECT id, name, address, coordinates, map_link, created_at FROM venues WHERE club_id = ? ORDER BY name',
+      'SELECT id, name, zip_code, street, house_number, city, link, google_maps_link, created_at FROM venues WHERE club_id = ? ORDER BY name',
       [req.params.clubId]
     );
     return res.json({ status: 'ok', venues });
@@ -21,15 +21,15 @@ router.get('/', requireAuth, requireClubAccess, async (req, res) => {
 });
 
 // POST /api/clubs/:clubId/venues
-router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['PortalAdmin', 'VereinsAdmin', 'Trainer']), async (req, res) => {
-  const { name, address, coordinates, map_link } = req.body || {};
+router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['PortalAdmin', 'VereinsAdmin']), async (req, res) => {
+  const { name, zip_code, street, house_number, city, link, google_maps_link } = req.body || {};
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ status: 'error', message: 'Name ist erforderlich.' });
   }
   try {
     const [result] = await pool.execute(
-      'INSERT INTO venues (name, address, coordinates, map_link, club_id) VALUES (?, ?, ?, ?, ?)',
-      [name.trim(), address || null, coordinates || null, map_link || null, req.params.clubId]
+      'INSERT INTO venues (name, zip_code, street, house_number, city, link, google_maps_link, club_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [name.trim(), zip_code || null, street || null, house_number || null, city || null, link || null, google_maps_link || null, req.params.clubId]
     );
     return res.status(201).json({ status: 'ok', venueId: result.insertId });
   } catch (err) {
@@ -39,15 +39,15 @@ router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['Por
 });
 
 // PUT /api/clubs/:clubId/venues/:venueId
-router.put('/:venueId', requireAuth, validateCsrf, requireClubAccess, requireRole(['PortalAdmin', 'VereinsAdmin', 'Trainer']), async (req, res) => {
-  const { name, address, coordinates, map_link } = req.body || {};
+router.put('/:venueId', requireAuth, validateCsrf, requireClubAccess, requireRole(['PortalAdmin', 'VereinsAdmin']), async (req, res) => {
+  const { name, zip_code, street, house_number, city, link, google_maps_link } = req.body || {};
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return res.status(400).json({ status: 'error', message: 'Name ist erforderlich.' });
   }
   try {
     const [result] = await pool.execute(
-      'UPDATE venues SET name = ?, address = ?, coordinates = ?, map_link = ? WHERE id = ? AND club_id = ?',
-      [name.trim(), address || null, coordinates || null, map_link || null, req.params.venueId, req.params.clubId]
+      'UPDATE venues SET name = ?, zip_code = ?, street = ?, house_number = ?, city = ?, link = ?, google_maps_link = ? WHERE id = ? AND club_id = ?',
+      [name.trim(), zip_code || null, street || null, house_number || null, city || null, link || null, google_maps_link || null, req.params.venueId, req.params.clubId]
     );
     if (result.affectedRows === 0) {
       return res.status(404).json({ status: 'error', message: 'Spielstätte nicht gefunden.' });

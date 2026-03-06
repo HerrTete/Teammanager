@@ -33,7 +33,7 @@ describe('Venue Routes', () => {
       mockPool.execute
         .mockResolvedValueOnce([[], []])
         .mockResolvedValueOnce([[{ id: 1 }], []])
-        .mockResolvedValueOnce([[{ id: 1, name: 'Stadion', address: 'Str. 1' }], []]);
+        .mockResolvedValueOnce([[{ id: 1, name: 'Stadion', street: 'Str.', house_number: '1', zip_code: '12345', city: 'Berlin' }], []]);
       const res = await authAgent.get('/api/clubs/1/venues');
       expect(res.status).toBe(200);
       expect(res.body.venues).toBeDefined();
@@ -60,7 +60,7 @@ describe('Venue Routes', () => {
         .mockResolvedValueOnce([{ insertId: 1 }, []]);
       const res = await authAgent.post('/api/clubs/1/venues')
         .set('X-CSRF-Token', csrfToken)
-        .send({ name: 'Stadion', address: 'Str. 1' });
+        .send({ name: 'Stadion', street: 'Str.', house_number: '1', zip_code: '12345', city: 'Berlin' });
       expect(res.status).toBe(201);
       expect(res.body.venueId).toBe(1);
     });

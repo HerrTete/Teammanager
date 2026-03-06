@@ -67,9 +67,12 @@ async function initDb() {
       CREATE TABLE IF NOT EXISTS venues (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
-        address VARCHAR(500),
-        coordinates VARCHAR(100),
-        map_link VARCHAR(500),
+        zip_code VARCHAR(20),
+        street VARCHAR(255),
+        house_number VARCHAR(50),
+        city VARCHAR(255),
+        link VARCHAR(500),
+        google_maps_link VARCHAR(500),
         club_id INT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE

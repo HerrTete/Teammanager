@@ -49,7 +49,7 @@ router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['Por
 router.get('/:gameId', requireAuth, requireClubAccess, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT g.*, v.name AS venue_name, v.address AS venue_address FROM games g LEFT JOIN venues v ON g.venue_id = v.id WHERE g.id = ? AND g.team_id = ?',
+      'SELECT g.*, v.name AS venue_name, v.street AS venue_street, v.house_number AS venue_house_number, v.zip_code AS venue_zip_code, v.city AS venue_city FROM games g LEFT JOIN venues v ON g.venue_id = v.id WHERE g.id = ? AND g.team_id = ?',
       [req.params.gameId, req.params.teamId]
     );
     if (rows.length === 0) {
