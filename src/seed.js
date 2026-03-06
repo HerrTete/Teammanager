@@ -139,12 +139,16 @@ async function seedDb() {
       );
 
       // --- Players ---
-      for (const username of ['spieler', 'kind']) {
-        await connection.execute(
-          'INSERT INTO players (user_id, team_id) VALUES (?, ?)',
-          [userIds[username], teamId]
-        );
-      }
+      // Insert 'spieler' as a regular player
+      await connection.execute(
+        'INSERT INTO players (user_id, team_id) VALUES (?, ?)',
+        [userIds['spieler'], teamId]
+      );
+      // Insert managed player (child without login, managed by mitglied)
+      await connection.execute(
+        'INSERT INTO players (name, team_id, managed_by) VALUES (?, ?, ?)',
+        ['Kind Spieler', teamId, userIds['mitglied']]
+      );
 
       await connection.commit();
     } catch (err) {

@@ -134,13 +134,15 @@ async function initDb() {
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS players (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
+        user_id INT,
+        name VARCHAR(255),
         team_id INT NOT NULL,
         jersey_number INT,
+        managed_by INT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY uq_user_team (user_id, team_id),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
+        FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+        FOREIGN KEY (managed_by) REFERENCES users(id) ON DELETE SET NULL
       )
     `);
 

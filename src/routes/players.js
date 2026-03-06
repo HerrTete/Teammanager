@@ -13,7 +13,7 @@ router.get('/', requireAuth, requireClubAccess, async (req, res) => {
       return res.status(403).json({ status: 'error', message: 'Team gehört nicht zu diesem Verein.' });
     }
     const [players] = await pool.execute(
-      'SELECT p.id, p.user_id, p.jersey_number, p.created_at, u.username FROM players p INNER JOIN users u ON p.user_id = u.id WHERE p.team_id = ? ORDER BY p.jersey_number',
+      'SELECT p.id, p.user_id, p.name, p.jersey_number, p.managed_by, p.created_at, u.username, m.username AS managed_by_username FROM players p LEFT JOIN users u ON p.user_id = u.id LEFT JOIN users m ON p.managed_by = m.id WHERE p.team_id = ? ORDER BY p.jersey_number',
       [req.params.teamId]
     );
     return res.json({ status: 'ok', players });
@@ -25,20 +25,17 @@ router.get('/', requireAuth, requireClubAccess, async (req, res) => {
 
 // POST /api/clubs/:clubId/teams/:teamId/players
 router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['PortalAdmin', 'VereinsAdmin', 'Trainer']), async (req, res) => {
-  const { userId, jerseyNumber } = req.body || {};
-  if (!userId) {
-    return res.status(400).json({ status: 'error', message: 'Benutzer-ID ist erforderlich.' });
+  const { userId, name, jerseyNumber, managedBy } = req.body || {};
+  if (!userId && (!name || typeof name !== 'string' || name.trim().length === 0)) {
+    return res.status(400).json({ status: 'error', message: 'Benutzer-ID oder Spielername ist erforderlich.' });
   }
   try {
     const [result] = await pool.execute(
-      'INSERT INTO players (user_id, team_id, jersey_number) VALUES (?, ?, ?)',
-      [userId, req.params.teamId, jerseyNumber || null]
+      'INSERT INTO players (user_id, name, team_id, jersey_number, managed_by) VALUES (?, ?, ?, ?, ?)',
+      [userId || null, name ? name.trim() : null, req.params.teamId, jerseyNumber || null, managedBy || null]
     );
     return res.status(201).json({ status: 'ok', playerId: result.insertId });
   } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ status: 'error', message: 'Spieler bereits im Team.' });
-    }
     console.error('Add player error:', err.message);
     return res.status(500).json({ status: 'error', message: 'Interner Serverfehler.' });
   }
@@ -46,11 +43,11 @@ router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['Por
 
 // PUT /api/clubs/:clubId/teams/:teamId/players/:playerId
 router.put('/:playerId', requireAuth, validateCsrf, requireClubAccess, requireRole(['PortalAdmin', 'VereinsAdmin', 'Trainer']), async (req, res) => {
-  const { jerseyNumber } = req.body || {};
+  const { jerseyNumber, name, managedBy } = req.body || {};
   try {
     const [result] = await pool.execute(
-      'UPDATE players SET jersey_number = ? WHERE id = ? AND team_id = ?',
-      [jerseyNumber !== undefined ? jerseyNumber : null, req.params.playerId, req.params.teamId]
+      'UPDATE players SET jersey_number = ?, name = ?, managed_by = ? WHERE id = ? AND team_id = ?',
+      [jerseyNumber !== undefined ? jerseyNumber : null, name || null, managedBy || null, req.params.playerId, req.params.teamId]
     );
     if (result.affectedRows === 0) {
       return res.status(404).json({ status: 'error', message: 'Spieler nicht gefunden.' });
