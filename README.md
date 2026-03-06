@@ -83,4 +83,22 @@
 - das Training hat eine Sportart
 - das Training kann n Teams einer Sportart zugeordnet werden
 - jeders Teammitglied wird zum Training eingeladen und muss zu oder absagen
-- 
+
+# UI
+## Vereinsverwaltung
+- sieht nur der Portaladmin
+- hier können auch Sportarten und Orte verwaltet werden
+## Teamverwaltung
+- sieht nur der Vereinsadmin
+
+## Aktivitätsverwaltung
+- hier können Spiele und Trainings verwaltet werden
+- sieht der Trainer und der Vereinsadmin
+- wenn der Trainer für mehrere Teams Trainer ist, muss er erstaus einer Dropdown die richtige Manschaft auswählen
+
+## Multirollen und Mandantenfähigkeit
+- Glboal sollte jeder nur einen Account haben
+- wenn jmd in zwei Vereinen ist, kann er im oberen Teil der Portals den Verein über Tab-Reiter auswählen.
+- wenn ein User verschieden Rollen hat sollen die ganzen Verwaltung-Menüs angezeigt werden 
+
+## Tra
