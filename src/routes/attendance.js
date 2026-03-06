@@ -20,7 +20,7 @@ router.get('/', requireAuth, requireClubAccess, async (req, res) => {
       return res.status(403).json({ status: 'error', message: 'Event gehört nicht zu diesem Verein.' });
     }
     const [attendance] = await pool.execute(
-      'SELECT a.id, a.user_id, a.status, a.reminded, a.escalated, a.created_at, a.updated_at, u.username FROM attendance a INNER JOIN users u ON a.user_id = u.id WHERE a.event_type = ? AND a.event_id = ?',
+      'SELECT a.id, a.user_id, a.player_id, a.status, a.reminded, a.escalated, a.created_at, a.updated_at, u.username, p.name AS player_name FROM attendance a LEFT JOIN users u ON a.user_id = u.id LEFT JOIN players p ON a.player_id = p.id WHERE a.event_type = ? AND a.event_id = ?',
       [eventType, eventId]
     );
     return res.json({ status: 'ok', attendance });
@@ -33,7 +33,7 @@ router.get('/', requireAuth, requireClubAccess, async (req, res) => {
 // POST /api/clubs/:clubId/events/:eventType/:eventId/attendance - RSVP
 router.post('/', requireAuth, validateCsrf, requireClubAccess, async (req, res) => {
   const { eventType, eventId, clubId } = req.params;
-  const { status } = req.body || {};
+  const { status, player_id } = req.body || {};
   if (!VALID_EVENT_TYPES.includes(eventType)) {
     return res.status(400).json({ status: 'error', message: 'Ungültiger Eventtyp.' });
   }
@@ -44,21 +44,48 @@ router.post('/', requireAuth, validateCsrf, requireClubAccess, async (req, res) 
     if (!(await verifyEventBelongsToClub(pool, eventType, eventId, clubId))) {
       return res.status(403).json({ status: 'error', message: 'Event gehört nicht zu diesem Verein.' });
     }
+
+    // If player_id is provided, verify the logged-in user manages this player
+    if (player_id) {
+      const [playerRows] = await pool.execute(
+        'SELECT id, managed_by FROM players WHERE id = ?',
+        [player_id]
+      );
+      if (playerRows.length === 0) {
+        return res.status(404).json({ status: 'error', message: 'Spieler nicht gefunden.' });
+      }
+      if (playerRows[0].managed_by !== req.session.userId) {
+        return res.status(403).json({ status: 'error', message: 'Keine Berechtigung für diesen Spieler.' });
+      }
+    }
+
     // Upsert attendance
-    const [existing] = await pool.execute(
-      'SELECT id FROM attendance WHERE user_id = ? AND event_type = ? AND event_id = ?',
-      [req.session.userId, eventType, eventId]
-    );
-    if (existing.length > 0) {
-      await pool.execute(
-        'UPDATE attendance SET status = ? WHERE id = ?',
-        [status, existing[0].id]
+    if (player_id) {
+      const [existing] = await pool.execute(
+        'SELECT id FROM attendance WHERE player_id = ? AND event_type = ? AND event_id = ?',
+        [player_id, eventType, eventId]
       );
+      if (existing.length > 0) {
+        await pool.execute('UPDATE attendance SET status = ? WHERE id = ?', [status, existing[0].id]);
+      } else {
+        await pool.execute(
+          'INSERT INTO attendance (user_id, player_id, event_type, event_id, status) VALUES (?, ?, ?, ?, ?)',
+          [req.session.userId, player_id, eventType, eventId, status]
+        );
+      }
     } else {
-      await pool.execute(
-        'INSERT INTO attendance (user_id, event_type, event_id, status) VALUES (?, ?, ?, ?)',
-        [req.session.userId, eventType, eventId, status]
+      const [existing] = await pool.execute(
+        'SELECT id FROM attendance WHERE user_id = ? AND event_type = ? AND event_id = ? AND player_id IS NULL',
+        [req.session.userId, eventType, eventId]
       );
+      if (existing.length > 0) {
+        await pool.execute('UPDATE attendance SET status = ? WHERE id = ?', [status, existing[0].id]);
+      } else {
+        await pool.execute(
+          'INSERT INTO attendance (user_id, event_type, event_id, status) VALUES (?, ?, ?, ?)',
+          [req.session.userId, eventType, eventId, status]
+        );
+      }
     }
     return res.json({ status: 'ok', message: 'Rückmeldung gespeichert.' });
   } catch (err) {

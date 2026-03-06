@@ -14,7 +14,7 @@ router.get('/', requireAuth, requireClubAccess, async (req, res) => {
       return res.status(403).json({ status: 'error', message: 'Team gehört nicht zu diesem Verein.' });
     }
     const [games] = await pool.execute(
-      'SELECT g.id, g.title, g.date, g.time, g.location_text, g.venue_id, g.opponent, g.team_id, g.created_by, g.created_at FROM games g WHERE g.team_id = ? ORDER BY g.date, g.time',
+      'SELECT g.id, g.title, g.date, g.kickoff_time, g.meeting_time, g.info, g.location_text, g.venue_id, g.opponent, g.team_id, g.created_by, g.created_at FROM games g WHERE g.team_id = ? ORDER BY g.date, g.kickoff_time',
       [req.params.teamId]
     );
     return res.json({ status: 'ok', games });
@@ -26,7 +26,7 @@ router.get('/', requireAuth, requireClubAccess, async (req, res) => {
 
 // POST /api/clubs/:clubId/teams/:teamId/games
 router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['PortalAdmin', 'VereinsAdmin', 'Trainer']), async (req, res) => {
-  const { title, date, time, location_text, venue_id, opponent } = req.body || {};
+  const { title, date, kickoff_time, meeting_time, info, location_text, venue_id, opponent } = req.body || {};
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     return res.status(400).json({ status: 'error', message: 'Titel ist erforderlich.' });
   }
@@ -35,8 +35,8 @@ router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['Por
       return res.status(403).json({ status: 'error', message: 'Team gehört nicht zu diesem Verein.' });
     }
     const [result] = await pool.execute(
-      'INSERT INTO games (title, date, time, location_text, venue_id, opponent, team_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [title.trim(), date || null, time || null, location_text || null, venue_id || null, opponent || null, req.params.teamId, req.session.userId]
+      'INSERT INTO games (title, date, kickoff_time, meeting_time, info, location_text, venue_id, opponent, team_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [title.trim(), date || null, kickoff_time || null, meeting_time || null, info || null, location_text || null, venue_id || null, opponent || null, req.params.teamId, req.session.userId]
     );
     return res.status(201).json({ status: 'ok', gameId: result.insertId });
   } catch (err) {
@@ -49,7 +49,7 @@ router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['Por
 router.get('/:gameId', requireAuth, requireClubAccess, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT g.*, v.name AS venue_name, v.address AS venue_address FROM games g LEFT JOIN venues v ON g.venue_id = v.id WHERE g.id = ? AND g.team_id = ?',
+      'SELECT g.*, v.name AS venue_name, v.street AS venue_street, v.house_number AS venue_house_number, v.zip_code AS venue_zip_code, v.city AS venue_city FROM games g LEFT JOIN venues v ON g.venue_id = v.id WHERE g.id = ? AND g.team_id = ?',
       [req.params.gameId, req.params.teamId]
     );
     if (rows.length === 0) {
@@ -68,14 +68,14 @@ router.get('/:gameId', requireAuth, requireClubAccess, async (req, res) => {
 
 // PUT /api/clubs/:clubId/teams/:teamId/games/:gameId
 router.put('/:gameId', requireAuth, validateCsrf, requireClubAccess, requireRole(['PortalAdmin', 'VereinsAdmin', 'Trainer']), async (req, res) => {
-  const { title, date, time, location_text, venue_id, opponent } = req.body || {};
+  const { title, date, kickoff_time, meeting_time, info, location_text, venue_id, opponent } = req.body || {};
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     return res.status(400).json({ status: 'error', message: 'Titel ist erforderlich.' });
   }
   try {
     const [result] = await pool.execute(
-      'UPDATE games SET title = ?, date = ?, time = ?, location_text = ?, venue_id = ?, opponent = ? WHERE id = ? AND team_id = ?',
-      [title.trim(), date || null, time || null, location_text || null, venue_id || null, opponent || null, req.params.gameId, req.params.teamId]
+      'UPDATE games SET title = ?, date = ?, kickoff_time = ?, meeting_time = ?, info = ?, location_text = ?, venue_id = ?, opponent = ? WHERE id = ? AND team_id = ?',
+      [title.trim(), date || null, kickoff_time || null, meeting_time || null, info || null, location_text || null, venue_id || null, opponent || null, req.params.gameId, req.params.teamId]
     );
     if (result.affectedRows === 0) {
       return res.status(404).json({ status: 'error', message: 'Spiel nicht gefunden.' });

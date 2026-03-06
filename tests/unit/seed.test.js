@@ -54,7 +54,7 @@ describe('Seed Module', () => {
 
     // Verify tables are dropped
     const dropCalls = executeCalls.filter(s => s.startsWith('DROP TABLE IF EXISTS'));
-    expect(dropCalls.length).toBe(18);
+    expect(dropCalls.length).toBe(19);
   });
 
   test('seedDb inserts users for all roles', async () => {

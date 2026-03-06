@@ -71,6 +71,16 @@ describe('Club Routes', () => {
       expect(res.status).toBe(201);
       expect(res.body.status).toBe('ok');
     });
+
+    test('validates name is required', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[{ role: 'PortalAdmin' }], []]); // requireRole
+      const res = await authAgent.post('/api/clubs')
+        .set('X-CSRF-Token', csrfToken)
+        .send({});
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('erforderlich');
+    });
   });
 
   describe('GET /api/clubs/:clubId', () => {
@@ -88,12 +98,48 @@ describe('Club Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.club).toBeDefined();
     });
+
+    test('returns 404 for non-existent club', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []]) // PortalAdmin check
+        .mockResolvedValueOnce([[{ id: 1 }], []]) // club_members
+        .mockResolvedValueOnce([[], []]); // SELECT returns empty
+      const res = await authAgent.get('/api/clubs/999');
+      expect(res.status).toBe(404);
+      expect(res.body.message).toContain('nicht gefunden');
+    });
   });
 
   describe('PUT /api/clubs/:clubId', () => {
     test('requires authentication', async () => {
       const res = await request(app).put('/api/clubs/1').send({ name: 'X' });
       expect(res.status).toBe(401);
+    });
+
+    test('updates club name with VereinsAdmin role', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []]) // PortalAdmin check
+        .mockResolvedValueOnce([[{ id: 1 }], []]) // club_members
+        .mockResolvedValueOnce([[{ role: 'VereinsAdmin' }], []]) // requireRole
+        .mockResolvedValueOnce([{ affectedRows: 1 }, []]); // UPDATE
+      const res = await authAgent.put('/api/clubs/1')
+        .set('X-CSRF-Token', csrfToken)
+        .send({ name: 'Neuer Name' });
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('ok');
+      expect(res.body.message).toContain('aktualisiert');
+    });
+
+    test('validates name is required', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []]) // PortalAdmin check
+        .mockResolvedValueOnce([[{ id: 1 }], []]) // club_members
+        .mockResolvedValueOnce([[{ role: 'VereinsAdmin' }], []]); // requireRole
+      const res = await authAgent.put('/api/clubs/1')
+        .set('X-CSRF-Token', csrfToken)
+        .send({});
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('erforderlich');
     });
   });
 

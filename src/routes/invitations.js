@@ -14,9 +14,14 @@ router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['Por
   if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
     return res.status(400).json({ status: 'error', message: 'Gültige E-Mail-Adresse ist erforderlich.' });
   }
-  const validRoles = ['VereinsAdmin', 'Trainer', 'Vereinsmitglied', 'Spieler'];
-  if (!role || !validRoles.includes(role)) {
+  const allRoles = ['PortalAdmin', 'VereinsAdmin', 'Trainer', 'Vereinsmitglied', 'Spieler'];
+  if (!role || !allRoles.includes(role)) {
     return res.status(400).json({ status: 'error', message: 'Gültige Rolle ist erforderlich.' });
+  }
+  // Check role hierarchy: VereinsAdmin can only invite roles <= VereinsAdmin
+  const isPortalAdmin = req.userRoles && req.userRoles.some(r => r.role === 'PortalAdmin');
+  if (!isPortalAdmin && role === 'PortalAdmin') {
+    return res.status(403).json({ status: 'error', message: 'Nur Portal-Admins können Portal-Admin Rollen vergeben.' });
   }
   try {
     const code = uuidv4();

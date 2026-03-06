@@ -67,9 +67,12 @@ async function initDb() {
       CREATE TABLE IF NOT EXISTS venues (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
-        address VARCHAR(500),
-        coordinates VARCHAR(100),
-        map_link VARCHAR(500),
+        zip_code VARCHAR(20),
+        street VARCHAR(255),
+        house_number VARCHAR(50),
+        city VARCHAR(255),
+        link VARCHAR(500),
+        google_maps_link VARCHAR(500),
         club_id INT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE CASCADE
@@ -81,7 +84,9 @@ async function initDb() {
         id INT AUTO_INCREMENT PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
         date DATE,
-        time TIME,
+        kickoff_time TIME,
+        meeting_time TIME,
+        info TEXT,
         location_text VARCHAR(500),
         venue_id INT,
         opponent VARCHAR(255),
@@ -103,26 +108,41 @@ async function initDb() {
         time TIME,
         location_text VARCHAR(500),
         venue_id INT,
+        sport_id INT,
         team_id INT NOT NULL,
         created_by INT NOT NULL,
         result_markdown TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE SET NULL,
+        FOREIGN KEY (sport_id) REFERENCES sports(id) ON DELETE SET NULL,
         FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
         FOREIGN KEY (created_by) REFERENCES users(id)
       )
     `);
 
     await connection.execute(`
+      CREATE TABLE IF NOT EXISTS training_teams (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        training_id INT NOT NULL,
+        team_id INT NOT NULL,
+        UNIQUE KEY uq_training_team (training_id, team_id),
+        FOREIGN KEY (training_id) REFERENCES trainings(id) ON DELETE CASCADE,
+        FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
+      )
+    `);
+
+    await connection.execute(`
       CREATE TABLE IF NOT EXISTS players (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
+        user_id INT,
+        name VARCHAR(255),
         team_id INT NOT NULL,
         jersey_number INT,
+        managed_by INT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE KEY uq_user_team (user_id, team_id),
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
+        FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+        FOREIGN KEY (managed_by) REFERENCES users(id) ON DELETE SET NULL
       )
     `);
 
@@ -202,6 +222,7 @@ async function initDb() {
       CREATE TABLE IF NOT EXISTS attendance (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
+        player_id INT,
         event_type ENUM('game','training') NOT NULL,
         event_id INT NOT NULL,
         status ENUM('pending','accepted','declined') DEFAULT 'pending',
@@ -209,7 +230,8 @@ async function initDb() {
         escalated BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
       )
     `);
 
