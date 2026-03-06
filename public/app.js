@@ -633,7 +633,10 @@ function loadVenues() {
     list.innerHTML = '';
     venues.forEach(function(v) {
       var li = document.createElement('li');
-      li.innerHTML = '<span>' + escHtml(v.name) + (v.address ? ' – ' + escHtml(v.address) : '') + '</span><div></div>';
+      var addrParts = [v.street, v.house_number].filter(Boolean).join(' ');
+      var cityParts = [v.zip_code, v.city].filter(Boolean).join(' ');
+      var fullAddr = [addrParts, cityParts].filter(Boolean).join(', ');
+      li.innerHTML = '<span>' + escHtml(v.name) + (fullAddr ? ' – ' + escHtml(fullAddr) : '') + '</span><div></div>';
       var editBtn = document.createElement('button');
       editBtn.className = 'btn btn-sm btn-secondary';
       editBtn.textContent = '✎';
@@ -750,13 +753,25 @@ function showAddTeamModal(sportId) {
 function showAddVenueModal() {
   showModal('Spielstätte hinzufügen',
     '<div class="app-form"><div class="form-group"><label>Name</label><input type="text" id="modal-venue-name"/></div>' +
-    '<div class="form-group"><label>Adresse</label><input type="text" id="modal-venue-address"/></div>' +
+    '<div class="form-group"><label>Straße</label><input type="text" id="modal-venue-street"/></div>' +
+    '<div class="form-group"><label>Hausnummer</label><input type="text" id="modal-venue-house-number"/></div>' +
+    '<div class="form-group"><label>PLZ</label><input type="text" id="modal-venue-zip"/></div>' +
+    '<div class="form-group"><label>Ort</label><input type="text" id="modal-venue-city"/></div>' +
+    '<div class="form-group"><label>Link</label><input type="text" id="modal-venue-link"/></div>' +
+    '<div class="form-group"><label>Google Maps Link</label><input type="text" id="modal-venue-gmaps"/></div>' +
     '<button class="btn btn-primary" id="modal-venue-submit">Erstellen</button></div>');
   document.getElementById('modal-venue-submit').addEventListener('click', function() {
     var name = document.getElementById('modal-venue-name').value.trim();
-    var address = document.getElementById('modal-venue-address').value.trim();
     if (!name) return;
-    api('/api/clubs/' + currentClubId + '/venues', { method: 'POST', body: { name: name, address: address } }).then(function() {
+    api('/api/clubs/' + currentClubId + '/venues', { method: 'POST', body: {
+      name: name,
+      street: document.getElementById('modal-venue-street').value.trim() || undefined,
+      house_number: document.getElementById('modal-venue-house-number').value.trim() || undefined,
+      zip_code: document.getElementById('modal-venue-zip').value.trim() || undefined,
+      city: document.getElementById('modal-venue-city').value.trim() || undefined,
+      link: document.getElementById('modal-venue-link').value.trim() || undefined,
+      google_maps_link: document.getElementById('modal-venue-gmaps').value.trim() || undefined,
+    } }).then(function() {
       closeModal(); loadVenues();
     }).catch(function(e) { alert('Fehler: ' + (e.message || 'Fehler')); });
   });
@@ -768,14 +783,31 @@ function showEditVenueModal(venueId) {
   showModal('Spielstätte bearbeiten',
     '<div class="app-form"><div class="form-group"><label>Name</label>' +
     '<input type="text" id="modal-venue-name" value="' + escHtml(v.name) + '"/></div>' +
-    '<div class="form-group"><label>Adresse</label>' +
-    '<input type="text" id="modal-venue-address" value="' + escHtml(v.address || '') + '"/></div>' +
+    '<div class="form-group"><label>Straße</label>' +
+    '<input type="text" id="modal-venue-street" value="' + escHtml(v.street || '') + '"/></div>' +
+    '<div class="form-group"><label>Hausnummer</label>' +
+    '<input type="text" id="modal-venue-house-number" value="' + escHtml(v.house_number || '') + '"/></div>' +
+    '<div class="form-group"><label>PLZ</label>' +
+    '<input type="text" id="modal-venue-zip" value="' + escHtml(v.zip_code || '') + '"/></div>' +
+    '<div class="form-group"><label>Ort</label>' +
+    '<input type="text" id="modal-venue-city" value="' + escHtml(v.city || '') + '"/></div>' +
+    '<div class="form-group"><label>Link</label>' +
+    '<input type="text" id="modal-venue-link" value="' + escHtml(v.link || '') + '"/></div>' +
+    '<div class="form-group"><label>Google Maps Link</label>' +
+    '<input type="text" id="modal-venue-gmaps" value="' + escHtml(v.google_maps_link || '') + '"/></div>' +
     '<button class="btn btn-primary" id="modal-venue-submit">Speichern</button></div>');
   document.getElementById('modal-venue-submit').addEventListener('click', function() {
     var name = document.getElementById('modal-venue-name').value.trim();
-    var address = document.getElementById('modal-venue-address').value.trim();
     if (!name) return;
-    api('/api/clubs/' + currentClubId + '/venues/' + venueId, { method: 'PUT', body: { name: name, address: address } }).then(function() {
+    api('/api/clubs/' + currentClubId + '/venues/' + venueId, { method: 'PUT', body: {
+      name: name,
+      street: document.getElementById('modal-venue-street').value.trim() || undefined,
+      house_number: document.getElementById('modal-venue-house-number').value.trim() || undefined,
+      zip_code: document.getElementById('modal-venue-zip').value.trim() || undefined,
+      city: document.getElementById('modal-venue-city').value.trim() || undefined,
+      link: document.getElementById('modal-venue-link').value.trim() || undefined,
+      google_maps_link: document.getElementById('modal-venue-gmaps').value.trim() || undefined,
+    } }).then(function() {
       closeModal(); loadVenues();
     }).catch(function(e) { alert('Fehler: ' + (e.message || 'Fehler')); });
   });
@@ -956,19 +988,31 @@ function showAddGameModal() {
 function renderGameForm(venueOpts) {
   showModal('Spiel hinzufügen',
     '<div class="app-form">' +
+    '<div class="form-group"><label>Titel</label><input type="text" id="modal-game-title" placeholder="z.B. Ligaspiel"/></div>' +
     '<div class="form-group"><label>Gegner</label><input type="text" id="modal-game-opponent"/></div>' +
-    '<div class="form-group"><label>Datum &amp; Uhrzeit</label><input type="datetime-local" id="modal-game-date"/></div>' +
+    '<div class="form-group"><label>Datum</label><input type="date" id="modal-game-date"/></div>' +
+    '<div class="form-group"><label>Anpfiff</label><input type="time" id="modal-game-kickoff"/></div>' +
+    '<div class="form-group"><label>Treffen</label><input type="time" id="modal-game-meeting"/></div>' +
+    '<div class="form-group"><label>Infos</label><textarea id="modal-game-info" rows="3"></textarea></div>' +
     (venueOpts ? '<div class="form-group"><label>Spielstätte</label><select id="modal-game-venue">' + venueOpts + '</select></div>' : '') +
-    '<div class="form-group"><label>Heim/Auswärts</label><select id="modal-game-location">' +
-    '<option value="home">Heim</option><option value="away">Auswärts</option></select></div>' +
+    '<div class="form-group"><label>Ort (Freitext)</label><input type="text" id="modal-game-location-text" placeholder="Alternative Ortsangabe"/></div>' +
     '<button class="btn btn-primary" id="modal-game-submit">Erstellen</button></div>');
   document.getElementById('modal-game-submit').addEventListener('click', function() {
+    var title = document.getElementById('modal-game-title').value.trim();
     var opponent = document.getElementById('modal-game-opponent').value.trim();
     var date = document.getElementById('modal-game-date').value;
-    if (!opponent || !date) { alert('Bitte Gegner und Datum angeben.'); return; }
-    var body = { opponent: opponent, date: date, location: document.getElementById('modal-game-location').value };
+    if (!title) { alert('Bitte Titel angeben.'); return; }
+    var body = {
+      title: title,
+      opponent: opponent || undefined,
+      date: date || undefined,
+      kickoff_time: document.getElementById('modal-game-kickoff').value || undefined,
+      meeting_time: document.getElementById('modal-game-meeting').value || undefined,
+      info: document.getElementById('modal-game-info').value.trim() || undefined,
+      location_text: document.getElementById('modal-game-location-text').value.trim() || undefined,
+    };
     var venueEl = document.getElementById('modal-game-venue');
-    if (venueEl && venueEl.value) body.venueId = venueEl.value;
+    if (venueEl && venueEl.value) body.venue_id = venueEl.value;
     api('/api/clubs/' + currentClubId + '/teams/' + currentTeamId + '/games', {
       method: 'POST', body: body
     }).then(function() { closeModal(); loadTeam(currentSportId, currentTeamId); })
