@@ -2,7 +2,8 @@
 
 const express = require('express');
 const multer = require('multer');
-const { pool } = require('../db');
+const clubRepository = require('../repositories/clubRepository');
+const roleRepository = require('../repositories/roleRepository');
 const { requireAuth, requireRole, requireClubAccess, validateCsrf } = require('../middleware/auth');
 
 const router = express.Router();
@@ -11,21 +12,17 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 *
 // GET /api/clubs - list user's clubs
 router.get('/', requireAuth, async (req, res) => {
   try {
-    // PortalAdmin sees all clubs
-    const [adminRoles] = await pool.execute(
-      "SELECT id FROM user_roles WHERE user_id = ? AND role = 'PortalAdmin'",
-      [req.session.userId]
-    );
+    const isAdmin = await roleRepository.isPortalAdmin(req.session.userId);
     let clubs;
-    if (adminRoles.length > 0) {
-      [clubs] = await pool.execute('SELECT id, name, created_at FROM clubs ORDER BY name');
+    if (isAdmin) {
+      clubs = await clubRepository.findAllClubs();
     } else {
-      [clubs] = await pool.execute(
-        'SELECT c.id, c.name, c.created_at FROM clubs c INNER JOIN club_members cm ON c.id = cm.club_id WHERE cm.user_id = ? ORDER BY c.name',
-        [req.session.userId]
-      );
+      clubs = await clubRepository.findClubsByUserId(req.session.userId);
     }
-    return res.json({ status: 'ok', clubs, isPortalAdmin: adminRoles.length > 0 });
+    for (const club of clubs) {
+      club.role = await roleRepository.getHighestRoleForClub(req.session.userId, club.id);
+    }
+    return res.json({ status: 'ok', clubs, isPortalAdmin: isAdmin });
   } catch (err) {
     console.error('List clubs error:', err.message);
     return res.status(500).json({ status: 'error', message: 'Interner Serverfehler.' });
@@ -39,7 +36,7 @@ router.post('/', requireAuth, validateCsrf, requireRole(['PortalAdmin']), async 
     return res.status(400).json({ status: 'error', message: 'Vereinsname ist erforderlich.' });
   }
   try {
-    const [result] = await pool.execute('INSERT INTO clubs (name) VALUES (?)', [name.trim()]);
+    const result = await clubRepository.createClub(name.trim());
     return res.status(201).json({ status: 'ok', clubId: result.insertId });
   } catch (err) {
     console.error('Create club error:', err.message);
@@ -50,11 +47,13 @@ router.post('/', requireAuth, validateCsrf, requireRole(['PortalAdmin']), async 
 // GET /api/clubs/:clubId - get club details
 router.get('/:clubId', requireAuth, requireClubAccess, async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT id, name, created_at FROM clubs WHERE id = ?', [req.params.clubId]);
+    const rows = await clubRepository.findClubById(req.params.clubId);
     if (rows.length === 0) {
       return res.status(404).json({ status: 'error', message: 'Verein nicht gefunden.' });
     }
-    return res.json({ status: 'ok', club: rows[0] });
+    const club = rows[0];
+    club.role = await roleRepository.getHighestRoleForClub(req.session.userId, req.params.clubId);
+    return res.json({ status: 'ok', club });
   } catch (err) {
     console.error('Get club error:', err.message);
     return res.status(500).json({ status: 'error', message: 'Interner Serverfehler.' });
@@ -68,7 +67,7 @@ router.put('/:clubId', requireAuth, validateCsrf, requireClubAccess, requireRole
     return res.status(400).json({ status: 'error', message: 'Vereinsname ist erforderlich.' });
   }
   try {
-    await pool.execute('UPDATE clubs SET name = ? WHERE id = ?', [name.trim(), req.params.clubId]);
+    await clubRepository.updateClub(req.params.clubId, name.trim());
     return res.json({ status: 'ok', message: 'Verein aktualisiert.' });
   } catch (err) {
     console.error('Update club error:', err.message);
@@ -82,7 +81,7 @@ router.post('/:clubId/logo', requireAuth, validateCsrf, requireClubAccess, requi
     return res.status(400).json({ status: 'error', message: 'Keine Datei hochgeladen.' });
   }
   try {
-    await pool.execute('UPDATE clubs SET logo = ?, logo_mime = ? WHERE id = ?', [req.file.buffer, req.file.mimetype, req.params.clubId]);
+    await clubRepository.updateClubLogo(req.params.clubId, req.file.buffer, req.file.mimetype);
     return res.json({ status: 'ok', message: 'Logo hochgeladen.' });
   } catch (err) {
     console.error('Upload logo error:', err.message);
@@ -93,7 +92,7 @@ router.post('/:clubId/logo', requireAuth, validateCsrf, requireClubAccess, requi
 // GET /api/clubs/:clubId/logo - get club logo
 router.get('/:clubId/logo', async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT logo, logo_mime FROM clubs WHERE id = ?', [req.params.clubId]);
+    const rows = await clubRepository.findClubLogo(req.params.clubId);
     if (rows.length === 0 || !rows[0].logo) {
       return res.status(404).json({ status: 'error', message: 'Logo nicht gefunden.' });
     }
