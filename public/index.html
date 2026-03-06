@@ -320,7 +320,9 @@
     <div id="app-main" style="display:none">
       <nav id="app-nav">
         <button class="nav-btn active" data-view="dashboard">Dashboard</button>
-        <button class="nav-btn" data-view="club">Vereinsverwaltung</button>
+        <button class="nav-btn" data-view="club" id="nav-club-btn" style="display:none">Vereinsverwaltung</button>
+        <button class="nav-btn" data-view="teamverwaltung" id="nav-teamverwaltung-btn" style="display:none">Teamverwaltung</button>
+        <button class="nav-btn" data-view="activities" id="nav-activities-btn" style="display:none">Aktivitätsverwaltung</button>
         <button class="nav-btn" data-view="messages">Nachrichten <span id="msg-badge" class="badge hidden">0</span></button>
         <button class="nav-btn" data-view="notifications">Benachrichtigungen <span id="notif-badge" class="badge hidden">0</span></button>
         <span class="nav-club-name" id="nav-club-name"></span>
@@ -391,6 +393,63 @@
             <button class="btn btn-primary btn-sm" id="btn-create-invitation">+ Einladung</button>
           </div>
           <div id="invitation-result"></div>
+        </div>
+      </div>
+
+      <!-- Teamverwaltung -->
+      <div id="view-teamverwaltung" class="app-view">
+        <div class="section-header">
+          <h2>Teamverwaltung</h2>
+        </div>
+        <div class="card">
+          <div class="section-header">
+            <h3>Sportarten &amp; Teams</h3>
+            <button class="btn btn-primary btn-sm" id="btn-tv-add-sport">+ Sportart</button>
+          </div>
+          <div id="tv-sports-list"></div>
+        </div>
+        <div class="card">
+          <div class="section-header">
+            <h3>Spielstätten</h3>
+            <button class="btn btn-primary btn-sm" id="btn-tv-add-venue">+ Spielstätte</button>
+          </div>
+          <ul id="tv-venues-list" class="item-list"><li>Laden…</li></ul>
+        </div>
+        <div class="card">
+          <div class="section-header">
+            <h3>Einladungen</h3>
+            <button class="btn btn-primary btn-sm" id="btn-tv-create-invitation">+ Einladung</button>
+          </div>
+          <div id="tv-invitation-result"></div>
+        </div>
+      </div>
+
+      <!-- Aktivitätsverwaltung -->
+      <div id="view-activities" class="app-view">
+        <div class="section-header">
+          <h2>Aktivitätsverwaltung</h2>
+        </div>
+        <div class="card">
+          <div class="form-group">
+            <label>Team auswählen</label>
+            <select id="activities-team-select"><option value="">– Team wählen –</option></select>
+          </div>
+        </div>
+        <div id="activities-content" style="display:none">
+          <div class="card">
+            <div class="section-header">
+              <h3>Spiele</h3>
+              <button class="btn btn-primary btn-sm" id="btn-act-add-game">+ Spiel</button>
+            </div>
+            <ul id="activities-games-list" class="item-list"><li>Laden…</li></ul>
+          </div>
+          <div class="card">
+            <div class="section-header">
+              <h3>Trainings</h3>
+              <button class="btn btn-primary btn-sm" id="btn-act-add-training">+ Training</button>
+            </div>
+            <ul id="activities-trainings-list" class="item-list"><li>Laden…</li></ul>
+          </div>
         </div>
       </div>
 
