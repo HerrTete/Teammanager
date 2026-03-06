@@ -48,6 +48,16 @@ describe('Attendance Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.attendance).toBeDefined();
     });
+
+    test('returns 403 when event does not belong to club', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[], []]);           // verifyEventBelongsToClub returns false
+      const res = await authAgent.get('/api/clubs/1/events/game/1/attendance');
+      expect(res.status).toBe(403);
+      expect(res.body.message).toContain('Event gehört nicht zu diesem Verein');
+    });
   });
 
   describe('POST /api/clubs/:clubId/events/:eventType/:eventId/attendance', () => {
@@ -68,6 +78,46 @@ describe('Attendance Routes', () => {
         .mockResolvedValueOnce([[], []])            // no existing attendance
         .mockResolvedValueOnce([{ insertId: 1 }, []]); // insert
       const res = await authAgent.post('/api/clubs/1/events/game/1/attendance')
+        .set('X-CSRF-Token', csrfToken).send({ status: 'accepted' });
+      expect(res.status).toBe(200);
+      expect(res.body.message).toContain('gespeichert');
+    });
+
+    test('updates existing self RSVP (upsert)', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyEventBelongsToClub
+        .mockResolvedValueOnce([[{ id: 10 }], []])  // existing attendance found (player_id IS NULL path)
+        .mockResolvedValueOnce([{ affectedRows: 1 }, []]); // UPDATE
+      const res = await authAgent.post('/api/clubs/1/events/game/1/attendance')
+        .set('X-CSRF-Token', csrfToken).send({ status: 'declined' });
+      expect(res.status).toBe(200);
+      expect(res.body.message).toContain('gespeichert');
+    });
+
+    test('updates existing managed player RSVP (upsert)', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyEventBelongsToClub
+        .mockResolvedValueOnce([[{ id: 5, managed_by: 1 }], []])  // player lookup (managed_by matches userId 1)
+        .mockResolvedValueOnce([[{ id: 10 }], []])  // existing attendance found (player_id path)
+        .mockResolvedValueOnce([{ affectedRows: 1 }, []]); // UPDATE
+      const res = await authAgent.post('/api/clubs/1/events/game/1/attendance')
+        .set('X-CSRF-Token', csrfToken).send({ status: 'declined', player_id: 5 });
+      expect(res.status).toBe(200);
+      expect(res.body.message).toContain('gespeichert');
+    });
+
+    test('accepts RSVP for training event type', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []])           // requireClubAccess: PortalAdmin
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
+        .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyEventBelongsToClub
+        .mockResolvedValueOnce([[], []])            // no existing attendance
+        .mockResolvedValueOnce([{ insertId: 1 }, []]); // insert
+      const res = await authAgent.post('/api/clubs/1/events/training/1/attendance')
         .set('X-CSRF-Token', csrfToken).send({ status: 'accepted' });
       expect(res.status).toBe(200);
       expect(res.body.message).toContain('gespeichert');
