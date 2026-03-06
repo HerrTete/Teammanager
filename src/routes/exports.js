@@ -15,7 +15,7 @@ router.get('/teams/:teamId/schedule/ical', requireAuth, requireClubAccess, async
       return res.status(403).json({ status: 'error', message: 'Team gehört nicht zu diesem Verein.' });
     }
     const [games] = await pool.execute(
-      'SELECT g.*, v.street AS venue_street, v.house_number AS venue_house_number, v.zip_code AS venue_zip_code, v.city AS venue_city FROM games g LEFT JOIN venues v ON g.venue_id = v.id WHERE g.team_id = ? ORDER BY g.date, g.time',
+      'SELECT g.*, v.street AS venue_street, v.house_number AS venue_house_number, v.zip_code AS venue_zip_code, v.city AS venue_city FROM games g LEFT JOIN venues v ON g.venue_id = v.id WHERE g.team_id = ? ORDER BY g.date, g.kickoff_time',
       [req.params.teamId]
     );
     const [trainings] = await pool.execute(
@@ -29,7 +29,7 @@ router.get('/teams/:teamId/schedule/ical', requireAuth, requireClubAccess, async
     const allEvents = [...games, ...trainings];
     for (const event of allEvents) {
       if (!event.date) continue;
-      const startDate = new Date(`${event.date}T${event.time || '00:00:00'}`);
+      const startDate = new Date(`${event.date}T${event.kickoff_time || event.time || '00:00:00'}`);
       const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
       const venueStreet = [event.venue_street, event.venue_house_number].filter(Boolean).join(' ');
       const venueCity = [event.venue_zip_code, event.venue_city].filter(Boolean).join(' ');
@@ -58,7 +58,7 @@ router.get('/teams/:teamId/schedule/pdf', requireAuth, requireClubAccess, async 
       return res.status(403).json({ status: 'error', message: 'Team gehört nicht zu diesem Verein.' });
     }
     const [games] = await pool.execute(
-      'SELECT * FROM games WHERE team_id = ? ORDER BY date, time',
+      'SELECT * FROM games WHERE team_id = ? ORDER BY date, kickoff_time',
       [req.params.teamId]
     );
     const [clubRows] = await pool.execute('SELECT logo FROM clubs WHERE id = ?', [req.params.clubId]);

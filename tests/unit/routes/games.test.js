@@ -62,7 +62,7 @@ describe('Game Routes', () => {
         .mockResolvedValueOnce([{ insertId: 1 }, []]); // INSERT
       const res = await authAgent.post('/api/clubs/1/teams/1/games')
         .set('X-CSRF-Token', csrfToken)
-        .send({ title: 'Testspiel', date: '2024-06-01', opponent: 'FC Gegner' });
+        .send({ title: 'Testspiel', date: '2024-06-01', kickoff_time: '15:00', meeting_time: '14:00', opponent: 'FC Gegner' });
       expect(res.status).toBe(201);
       expect(res.body.gameId).toBe(1);
     });
