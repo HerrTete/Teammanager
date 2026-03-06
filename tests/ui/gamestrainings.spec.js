@@ -26,34 +26,31 @@ test.describe('Games & Trainings UI', () => {
     await login(page);
     await page.locator('.nav-btn[data-view="club"]').click();
     const openBtn = page.locator('#sports-list [data-team]').first();
-    if (await openBtn.count() > 0) {
-      await openBtn.click();
-      await expect(page.locator('#view-team')).toHaveClass(/active/);
-      await expect(page.locator('#team-games')).toBeVisible();
-      await expect(page.locator('#team-trainings')).toBeVisible();
-    }
+    await expect(openBtn).toBeVisible();
+    await openBtn.click();
+    await expect(page.locator('#view-team')).toHaveClass(/active/);
+    await expect(page.locator('#team-games')).toBeVisible();
+    await expect(page.locator('#team-trainings')).toBeVisible();
   });
 
   test('add game button is visible on team view', async ({ page }) => {
     await login(page);
     await page.locator('.nav-btn[data-view="club"]').click();
     const openBtn = page.locator('#sports-list [data-team]').first();
-    if (await openBtn.count() > 0) {
-      await openBtn.click();
-      await expect(page.locator('#view-team')).toHaveClass(/active/);
-      await expect(page.locator('#btn-add-game')).toBeVisible();
-    }
+    await expect(openBtn).toBeVisible();
+    await openBtn.click();
+    await expect(page.locator('#view-team')).toHaveClass(/active/);
+    await expect(page.locator('#btn-add-game')).toBeVisible();
   });
 
   test('add training button is visible on team view', async ({ page }) => {
     await login(page);
     await page.locator('.nav-btn[data-view="club"]').click();
     const openBtn = page.locator('#sports-list [data-team]').first();
-    if (await openBtn.count() > 0) {
-      await openBtn.click();
-      await expect(page.locator('#view-team')).toHaveClass(/active/);
-      await expect(page.locator('#btn-add-training')).toBeVisible();
-    }
+    await expect(openBtn).toBeVisible();
+    await openBtn.click();
+    await expect(page.locator('#view-team')).toHaveClass(/active/);
+    await expect(page.locator('#btn-add-training')).toBeVisible();
   });
 
   test('add game modal has title, opponent, date, kickoff, meeting, info fields', async ({ page }) => {
