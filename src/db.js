@@ -108,13 +108,26 @@ async function initDb() {
         time TIME,
         location_text VARCHAR(500),
         venue_id INT,
+        sport_id INT,
         team_id INT NOT NULL,
         created_by INT NOT NULL,
         result_markdown TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE SET NULL,
+        FOREIGN KEY (sport_id) REFERENCES sports(id) ON DELETE SET NULL,
         FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
         FOREIGN KEY (created_by) REFERENCES users(id)
+      )
+    `);
+
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS training_teams (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        training_id INT NOT NULL,
+        team_id INT NOT NULL,
+        UNIQUE KEY uq_training_team (training_id, team_id),
+        FOREIGN KEY (training_id) REFERENCES trainings(id) ON DELETE CASCADE,
+        FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
       )
     `);
 

@@ -59,7 +59,8 @@ describe('Training Routes', () => {
         .mockResolvedValueOnce([[{ id: 1 }], []])   // requireClubAccess: club_members
         .mockResolvedValueOnce([[{ role: 'Trainer' }], []])  // requireRole
         .mockResolvedValueOnce([[{ id: 1 }], []])   // verifyTeamBelongsToClub
-        .mockResolvedValueOnce([{ insertId: 1 }, []]); // INSERT
+        .mockResolvedValueOnce([{ insertId: 1 }, []])  // INSERT training
+        .mockResolvedValueOnce([{ insertId: 1 }, []]); // INSERT training_teams
       const res = await authAgent.post('/api/clubs/1/teams/1/trainings')
         .set('X-CSRF-Token', csrfToken)
         .send({ title: 'Abschlusstraining', date: '2024-06-01' });

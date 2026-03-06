@@ -17,6 +17,7 @@ const TABLES_DROP_ORDER = [
   'invitations',
   'team_trainers',
   'players',
+  'training_teams',
   'trainings',
   'games',
   'venues',
