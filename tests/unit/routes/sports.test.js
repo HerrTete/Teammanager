@@ -62,6 +62,20 @@ describe('Sport Routes', () => {
       expect(res.status).toBe(400);
       expect(res.body.message).toContain('erforderlich');
     });
+
+    test('creates sport with VereinsAdmin role', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []]) // PortalAdmin check
+        .mockResolvedValueOnce([[{ id: 1 }], []]) // club_members
+        .mockResolvedValueOnce([[{ role: 'VereinsAdmin' }], []]) // requireRole
+        .mockResolvedValueOnce([{ insertId: 1 }, []]); // INSERT
+      const res = await authAgent.post('/api/clubs/1/sports')
+        .set('X-CSRF-Token', csrfToken)
+        .send({ name: 'Tennis' });
+      expect(res.status).toBe(201);
+      expect(res.body.status).toBe('ok');
+      expect(res.body.sportId).toBe(1);
+    });
   });
 
   describe('PUT /api/clubs/:clubId/sports/:sportId', () => {
@@ -74,12 +88,64 @@ describe('Sport Routes', () => {
         .set('X-CSRF-Token', csrfToken).send({ name: '' });
       expect(res.status).toBe(400);
     });
+
+    test('updates sport name successfully', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []]) // PortalAdmin check
+        .mockResolvedValueOnce([[{ id: 1 }], []]) // club_members
+        .mockResolvedValueOnce([[{ role: 'VereinsAdmin' }], []]) // requireRole
+        .mockResolvedValueOnce([{ affectedRows: 1 }, []]); // UPDATE
+      const res = await authAgent.put('/api/clubs/1/sports/1')
+        .set('X-CSRF-Token', csrfToken)
+        .send({ name: 'Basketball' });
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('ok');
+      expect(res.body.message).toContain('aktualisiert');
+    });
+
+    test('returns 404 for non-existent sport', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []]) // PortalAdmin check
+        .mockResolvedValueOnce([[{ id: 1 }], []]) // club_members
+        .mockResolvedValueOnce([[{ role: 'VereinsAdmin' }], []]) // requireRole
+        .mockResolvedValueOnce([{ affectedRows: 0 }, []]); // UPDATE no match
+      const res = await authAgent.put('/api/clubs/1/sports/999')
+        .set('X-CSRF-Token', csrfToken)
+        .send({ name: 'Basketball' });
+      expect(res.status).toBe(404);
+      expect(res.body.message).toContain('nicht gefunden');
+    });
   });
 
   describe('DELETE /api/clubs/:clubId/sports/:sportId', () => {
     test('requires authentication', async () => {
       const res = await request(app).delete('/api/clubs/1/sports/1');
       expect(res.status).toBe(401);
+    });
+
+    test('deletes sport successfully', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []]) // PortalAdmin check
+        .mockResolvedValueOnce([[{ id: 1 }], []]) // club_members
+        .mockResolvedValueOnce([[{ role: 'VereinsAdmin' }], []]) // requireRole
+        .mockResolvedValueOnce([{ affectedRows: 1 }, []]); // DELETE
+      const res = await authAgent.delete('/api/clubs/1/sports/1')
+        .set('X-CSRF-Token', csrfToken);
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('ok');
+      expect(res.body.message).toContain('gelöscht');
+    });
+
+    test('returns 404 for non-existent sport', async () => {
+      mockPool.execute
+        .mockResolvedValueOnce([[], []]) // PortalAdmin check
+        .mockResolvedValueOnce([[{ id: 1 }], []]) // club_members
+        .mockResolvedValueOnce([[{ role: 'VereinsAdmin' }], []]) // requireRole
+        .mockResolvedValueOnce([{ affectedRows: 0 }, []]); // DELETE no match
+      const res = await authAgent.delete('/api/clubs/1/sports/999')
+        .set('X-CSRF-Token', csrfToken);
+      expect(res.status).toBe(404);
+      expect(res.body.message).toContain('nicht gefunden');
     });
   });
 });
