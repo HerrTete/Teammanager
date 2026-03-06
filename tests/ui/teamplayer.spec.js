@@ -34,61 +34,56 @@ test.describe('Team & Player Management UI', () => {
     await page.locator('.nav-btn[data-view="club"]').click();
     // Wait for sports to load, then click first team's open button
     const openBtn = page.locator('#sports-list [data-team]').first();
-    // If sports have no inline teams, the button won't exist, skip
-    if (await openBtn.count() > 0) {
-      await openBtn.click();
-      await expect(page.locator('#view-team')).toHaveClass(/active/);
-      await expect(page.locator('#team-trainers')).toBeVisible();
-      await expect(page.locator('#team-players')).toBeVisible();
-      await expect(page.locator('#team-games')).toBeVisible();
-      await expect(page.locator('#team-trainings')).toBeVisible();
-    }
+    // Ensure at least one team is present; fail if none are rendered
+    await expect(openBtn).toHaveCount(1);
+    await openBtn.click();
+    await expect(page.locator('#view-team')).toHaveClass(/active/);
+    await expect(page.locator('#team-trainers')).toBeVisible();
+    await expect(page.locator('#team-players')).toBeVisible();
+    await expect(page.locator('#team-games')).toBeVisible();
+    await expect(page.locator('#team-trainings')).toBeVisible();
   });
 
   test('add player button is visible on team view', async ({ page }) => {
     await login(page);
     await page.locator('.nav-btn[data-view="club"]').click();
     const openBtn = page.locator('#sports-list [data-team]').first();
-    if (await openBtn.count() > 0) {
-      await openBtn.click();
-      await expect(page.locator('#view-team')).toHaveClass(/active/);
-      await expect(page.locator('#btn-add-player')).toBeVisible();
-    }
+    await expect(openBtn).toHaveCount(1);
+    await openBtn.click();
+    await expect(page.locator('#view-team')).toHaveClass(/active/);
+    await expect(page.locator('#btn-add-player')).toBeVisible();
   });
 
   test('add trainer button is visible for admin on team view', async ({ page }) => {
     await login(page);
     await page.locator('.nav-btn[data-view="club"]').click();
     const openBtn = page.locator('#sports-list [data-team]').first();
-    if (await openBtn.count() > 0) {
-      await openBtn.click();
-      await expect(page.locator('#view-team')).toHaveClass(/active/);
-      await expect(page.locator('#btn-add-trainer')).toBeVisible();
-    }
+    await expect(openBtn).toHaveCount(1);
+    await openBtn.click();
+    await expect(page.locator('#view-team')).toHaveClass(/active/);
+    await expect(page.locator('#btn-add-trainer')).toBeVisible();
   });
 
   test('add player modal shows form fields', async ({ page }) => {
     await login(page);
     await page.locator('.nav-btn[data-view="club"]').click();
     const openBtn = page.locator('#sports-list [data-team]').first();
-    if (await openBtn.count() > 0) {
-      await openBtn.click();
-      await expect(page.locator('#view-team')).toHaveClass(/active/);
-      await page.locator('#btn-add-player').click();
-      await expect(page.locator('#modal-player-name')).toBeVisible();
-      await expect(page.locator('#modal-player-jersey')).toBeVisible();
-    }
+    await expect(openBtn).toHaveCount(1);
+    await openBtn.click();
+    await expect(page.locator('#view-team')).toHaveClass(/active/);
+    await page.locator('#btn-add-player').click();
+    await expect(page.locator('#modal-player-name')).toBeVisible();
+    await expect(page.locator('#modal-player-jersey')).toBeVisible();
   });
 
   test('add trainer modal shows form fields', async ({ page }) => {
     await login(page);
     await page.locator('.nav-btn[data-view="club"]').click();
     const openBtn = page.locator('#sports-list [data-team]').first();
-    if (await openBtn.count() > 0) {
-      await openBtn.click();
-      await expect(page.locator('#view-team')).toHaveClass(/active/);
-      await page.locator('#btn-add-trainer').click();
-      await expect(page.locator('#modal-trainer-name')).toBeVisible();
-    }
+    await expect(openBtn).toHaveCount(1);
+    await openBtn.click();
+    await expect(page.locator('#view-team')).toHaveClass(/active/);
+    await page.locator('#btn-add-trainer').click();
+    await expect(page.locator('#modal-trainer-name')).toBeVisible();
   });
 });
