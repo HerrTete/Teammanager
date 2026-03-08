@@ -429,16 +429,18 @@ function updateNavVisibility() {
   var navTeamBtn = document.getElementById('nav-teamverwaltung-btn');
   var navActBtn = document.getElementById('nav-activities-btn');
 
+  // Compute visibility from the currently selected club's role
+  var currentClub = clubs.find(function(c) { return getId(c) == currentClubId; });
+  var clubRole = currentClub ? currentClub.role : null;
+
   // Vereinsverwaltung: only PortalAdmin
   if (navClubBtn) navClubBtn.style.display = isPortalAdmin ? '' : 'none';
 
-  // Teamverwaltung: VereinsAdmin or PortalAdmin
-  var hasVereinsAdmin = clubs.some(function(c) { return c.role === 'VereinsAdmin'; });
-  if (navTeamBtn) navTeamBtn.style.display = (isPortalAdmin || hasVereinsAdmin) ? '' : 'none';
+  // Teamverwaltung: VereinsAdmin or PortalAdmin (for the selected club)
+  if (navTeamBtn) navTeamBtn.style.display = (isPortalAdmin || clubRole === 'VereinsAdmin') ? '' : 'none';
 
-  // Aktivitätsverwaltung: Trainer, VereinsAdmin, or PortalAdmin
-  var hasTrainerOrAdmin = clubs.some(function(c) { return c.role === 'Trainer' || c.role === 'VereinsAdmin'; });
-  if (navActBtn) navActBtn.style.display = (isPortalAdmin || hasTrainerOrAdmin) ? '' : 'none';
+  // Aktivitätsverwaltung: Trainer, VereinsAdmin, or PortalAdmin (for the selected club)
+  if (navActBtn) navActBtn.style.display = (isPortalAdmin || clubRole === 'Trainer' || clubRole === 'VereinsAdmin') ? '' : 'none';
 }
 
 function selectClub(clubId) {
@@ -450,6 +452,7 @@ function selectClub(clubId) {
   });
   var club = clubs.find(function(c) { return getId(c) == clubId; });
   document.getElementById('nav-club-name').textContent = club ? club.name : '';
+  updateNavVisibility();
   navigateTo('dashboard');
 }
 
@@ -1056,8 +1059,8 @@ function renderTrainingForm(venueOpts) {
   showModal('Training hinzufügen',
     '<div class="app-form">' +
     '<div class="form-group"><label>Titel</label><input type="text" id="modal-training-title" value="Training"/></div>' +
-    '<div class="form-group"><label>Datum</label><input type="datetime-local" id="modal-training-date"/></div>' +
-    '<div class="form-group"><label>Uhrzeit</label><input type="text" id="modal-training-time" placeholder="z.B. 18:00"/></div>' +
+    '<div class="form-group"><label>Datum</label><input type="date" id="modal-training-date"/></div>' +
+    '<div class="form-group"><label>Uhrzeit</label><input type="time" id="modal-training-time"/></div>' +
     (venueOpts ? '<div class="form-group"><label>Spielstätte</label><select id="modal-training-venue">' + venueOpts + '</select></div>' : '') +
     '<div class="form-group"><label>Ort (Freitext, alternativ zur Spielstätte)</label><input type="text" id="modal-training-location-text"/></div>' +
     '<button class="btn btn-primary" id="modal-training-submit">Erstellen</button></div>');
@@ -1207,14 +1210,45 @@ function loadActivities() {
 
   api('/api/clubs/' + currentClubId + '/sports').then(function(data) {
     var sports = data.sports || data || [];
-    sports.forEach(function(sp) {
-      var teams = sp.teams || [];
-      teams.forEach(function(t) {
-        var opt = document.createElement('option');
-        opt.value = getId(sp) + ':' + getId(t);
-        opt.textContent = sp.name + ' – ' + t.name;
-        sel.appendChild(opt);
+
+    function populateSelect(sportsWithTeams) {
+      sportsWithTeams.forEach(function(sp) {
+        var teams = sp.teams || [];
+        teams.forEach(function(t) {
+          var opt = document.createElement('option');
+          opt.value = getId(sp) + ':' + getId(t);
+          opt.textContent = sp.name + ' – ' + t.name;
+          sel.appendChild(opt);
+        });
       });
+    }
+
+    // If sports already include teams (e.g. mock server), populate directly.
+    var needsTeamFetch = sports.some(function(sp) {
+      return !Array.isArray(sp.teams);
+    });
+
+    if (!needsTeamFetch) {
+      populateSelect(sports);
+      return;
+    }
+
+    // Otherwise, fetch teams per sport from the dedicated endpoint.
+    Promise.all(sports.map(function(sp) {
+      if (Array.isArray(sp.teams)) {
+        return Promise.resolve(sp);
+      }
+      return api('/api/clubs/' + currentClubId + '/sports/' + getId(sp) + '/teams')
+        .then(function(teamData) {
+          sp.teams = teamData.teams || teamData || [];
+          return sp;
+        })
+        .catch(function() {
+          sp.teams = [];
+          return sp;
+        });
+    })).then(function(sportsWithTeams) {
+      populateSelect(sportsWithTeams);
     });
   }).catch(function() {});
 

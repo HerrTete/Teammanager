@@ -171,6 +171,55 @@ describe('Role Repository', () => {
     });
   });
 
+  describe('getHighestRolesForClubs', () => {
+    it('returns highest roles for multiple clubs in one query', async () => {
+      const roles = [
+        { role: 'VereinsAdmin', club_id: 1, sport_id: null, team_id: null },
+        { role: 'Trainer', club_id: 2, sport_id: 1, team_id: 1 },
+        { role: 'Spieler', club_id: 2, sport_id: 1, team_id: 1 },
+      ];
+      mockPool.execute.mockResolvedValueOnce([roles, []]);
+
+      const result = await roleRepository.getHighestRolesForClubs(10, [1, 2]);
+
+      expect(result).toEqual({ 1: 'VereinsAdmin', 2: 'Trainer' });
+      expect(mockPool.execute).toHaveBeenCalledTimes(1);
+    });
+
+    it('includes PortalAdmin for all clubs when user has PortalAdmin role', async () => {
+      const roles = [
+        { role: 'PortalAdmin', club_id: null, sport_id: null, team_id: null },
+      ];
+      mockPool.execute.mockResolvedValueOnce([roles, []]);
+
+      const result = await roleRepository.getHighestRolesForClubs(10, [1, 2, 3]);
+
+      expect(result[1]).toBe('PortalAdmin');
+      expect(result[2]).toBe('PortalAdmin');
+      expect(result[3]).toBe('PortalAdmin');
+    });
+
+    it('returns null for clubs where user has no roles', async () => {
+      const roles = [
+        { role: 'Trainer', club_id: 1, sport_id: 1, team_id: 1 },
+      ];
+      mockPool.execute.mockResolvedValueOnce([roles, []]);
+
+      const result = await roleRepository.getHighestRolesForClubs(10, [1, 2]);
+
+      expect(result[1]).toBe('Trainer');
+      expect(result[2]).toBeNull();
+    });
+
+    it('returns empty object for empty club list', async () => {
+      mockPool.execute.mockResolvedValueOnce([[], []]);
+
+      const result = await roleRepository.getHighestRolesForClubs(10, []);
+
+      expect(result).toEqual({});
+    });
+  });
+
   describe('isClubMember', () => {
     it('returns true when user is a club member', async () => {
       mockPool.execute.mockResolvedValueOnce([[{ id: 1 }], []]);

@@ -37,6 +37,27 @@ async function getHighestRoleForClub(userId, clubId) {
   return null;
 }
 
+function computeHighestRole(roles) {
+  for (const level of ROLE_HIERARCHY) {
+    if (roles.some((r) => r.role === level)) return level;
+  }
+  return null;
+}
+
+async function getHighestRolesForClubs(userId, clubIds) {
+  const allRoles = await findUserRoles(userId);
+  const hasPortalAdmin = allRoles.some((r) => r.role === 'PortalAdmin');
+  const result = {};
+  for (const clubId of clubIds) {
+    const clubRoles = allRoles.filter((r) => {
+      if (r.role === 'PortalAdmin') return true;
+      return r.club_id === parseInt(clubId, 10);
+    });
+    result[clubId] = clubRoles.length > 0 ? computeHighestRole(clubRoles) : (hasPortalAdmin ? 'PortalAdmin' : null);
+  }
+  return result;
+}
+
 async function isClubMember(userId, clubId) {
   const [rows] = await pool.execute(
     'SELECT id FROM club_members WHERE user_id = ? AND club_id = ?',
@@ -50,5 +71,6 @@ module.exports = {
   isPortalAdmin,
   findRolesForClub,
   getHighestRoleForClub,
+  getHighestRolesForClubs,
   isClubMember,
 };

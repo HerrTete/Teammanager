@@ -19,8 +19,10 @@ router.get('/', requireAuth, async (req, res) => {
     } else {
       clubs = await clubRepository.findClubsByUserId(req.session.userId);
     }
+    const clubIds = clubs.map(c => c.id);
+    const roleMap = await roleRepository.getHighestRolesForClubs(req.session.userId, clubIds);
     for (const club of clubs) {
-      club.role = await roleRepository.getHighestRoleForClub(req.session.userId, club.id);
+      club.role = roleMap[club.id] || null;
     }
     return res.json({ status: 'ok', clubs, isPortalAdmin: isAdmin });
   } catch (err) {
