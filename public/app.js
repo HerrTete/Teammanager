@@ -1096,33 +1096,68 @@ function loadTvSports() {
       container.innerHTML = '<p style="color:#888">Keine Sportarten vorhanden</p>';
       return;
     }
-    container.innerHTML = '';
-    sports.forEach(function(sp) {
-      var div = document.createElement('div');
-      div.style.marginBottom = '0.75rem';
-      var teams = sp.teams || [];
-      var teamHtml = '<ul class="item-list">';
-      if (teams.length === 0) {
-        teamHtml += '<li style="color:#888">Keine Teams</li>';
-      } else {
-        teams.forEach(function(t) {
-          teamHtml += '<li><span>' + escHtml(t.name) + '</span>' +
-            '<button class="btn btn-sm btn-secondary" data-sport="' + getId(sp) + '" data-team="' + getId(t) + '">Öffnen</button></li>';
+
+    function renderSports(sportsWithTeams) {
+      container.innerHTML = '';
+      sportsWithTeams.forEach(function(sp) {
+        var div = document.createElement('div');
+        div.style.marginBottom = '0.75rem';
+        var teams = sp.teams || [];
+        var teamHtml = '<ul class="item-list">';
+        if (teams.length === 0) {
+          teamHtml += '<li style="color:#888">Keine Teams</li>';
+        } else {
+          teams.forEach(function(t) {
+            teamHtml += '<li><span>' + escHtml(t.name) + '</span>' +
+              '<button class="btn btn-sm btn-secondary" data-sport="' + getId(sp) + '" data-team="' + getId(t) + '">Öffnen</button></li>';
+          });
+        }
+        teamHtml += '</ul>';
+        div.innerHTML = '<div class="section-header" style="margin-bottom:0.25rem">' +
+          '<strong>' + escHtml(sp.name) + '</strong>' +
+          '<button class="btn btn-sm btn-primary" data-add-team="' + getId(sp) + '">+ Team</button></div>' + teamHtml;
+        div.querySelectorAll('[data-team]').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            loadTeam(btn.dataset.sport, btn.dataset.team);
+          });
         });
+        div.querySelector('[data-add-team]').addEventListener('click', function() {
+          showAddTeamModal(getId(sp));
+        });
+        container.appendChild(div);
+      });
+    }
+
+    // If sports already include teams (e.g. mock server), render directly.
+    var needsTeamFetch = sports.some(function(sp) {
+      return !Array.isArray(sp.teams);
+    });
+
+    if (!needsTeamFetch) {
+      renderSports(sports);
+      return;
+    }
+
+    // Otherwise, fetch teams per sport from the dedicated endpoint.
+    Promise.all(sports.map(function(sp) {
+      if (Array.isArray(sp.teams)) {
+        return Promise.resolve(sp);
       }
-      teamHtml += '</ul>';
-      div.innerHTML = '<div class="section-header" style="margin-bottom:0.25rem">' +
-        '<strong>' + escHtml(sp.name) + '</strong>' +
-        '<button class="btn btn-sm btn-primary" data-add-team="' + getId(sp) + '">+ Team</button></div>' + teamHtml;
-      div.querySelectorAll('[data-team]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          loadTeam(btn.dataset.sport, btn.dataset.team);
+      return api('/api/clubs/' + currentClubId + '/sports/' + getId(sp) + '/teams')
+        .then(function(teamData) {
+          var teams = teamData.teams || teamData || [];
+          sp.teams = teams;
+          return sp;
+        })
+        .catch(function() {
+          // On error, treat as having no teams so UI still renders.
+          sp.teams = [];
+          return sp;
         });
-      });
-      div.querySelector('[data-add-team]').addEventListener('click', function() {
-        showAddTeamModal(getId(sp));
-      });
-      container.appendChild(div);
+    })).then(function(sportsWithTeams) {
+      renderSports(sportsWithTeams);
+    }).catch(function() {
+      document.getElementById('tv-sports-list').innerHTML = '<p style="color:#c00">Fehler beim Laden</p>';
     });
   }).catch(function() {
     document.getElementById('tv-sports-list').innerHTML = '<p style="color:#c00">Fehler beim Laden</p>';
