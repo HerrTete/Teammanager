@@ -2,6 +2,7 @@
 
 const express = require('express');
 const { pool } = require('../db');
+const gameRepository = require('../repositories/gameRepository');
 const { requireAuth, requireRole, requireClubAccess, validateCsrf, verifyTeamBelongsToClub } = require('../middleware/auth');
 const { marked } = require('marked');
 
@@ -13,10 +14,7 @@ router.get('/', requireAuth, requireClubAccess, async (req, res) => {
     if (!(await verifyTeamBelongsToClub(pool, req.params.teamId, req.params.clubId))) {
       return res.status(403).json({ status: 'error', message: 'Team gehört nicht zu diesem Verein.' });
     }
-    const [games] = await pool.execute(
-      'SELECT g.id, g.title, g.date, g.kickoff_time, g.meeting_time, g.info, g.location_text, g.venue_id, g.opponent, g.team_id, g.created_by, g.created_at FROM games g WHERE g.team_id = ? ORDER BY g.date, g.kickoff_time',
-      [req.params.teamId]
-    );
+    const games = await gameRepository.findGamesByTeamId(req.params.teamId);
     return res.json({ status: 'ok', games });
   } catch (err) {
     console.error('List games error:', err.message);
@@ -34,10 +32,18 @@ router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['Por
     if (!(await verifyTeamBelongsToClub(pool, req.params.teamId, req.params.clubId))) {
       return res.status(403).json({ status: 'error', message: 'Team gehört nicht zu diesem Verein.' });
     }
-    const [result] = await pool.execute(
-      'INSERT INTO games (title, date, kickoff_time, meeting_time, info, location_text, venue_id, opponent, team_id, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [title.trim(), date || null, kickoff_time || null, meeting_time || null, info || null, location_text || null, venue_id || null, opponent || null, req.params.teamId, req.session.userId]
-    );
+    const result = await gameRepository.createGame({
+      title: title.trim(),
+      date,
+      kickoff_time,
+      meeting_time,
+      info,
+      location_text,
+      venue_id,
+      opponent,
+      team_id: req.params.teamId,
+      created_by: req.session.userId,
+    });
     return res.status(201).json({ status: 'ok', gameId: result.insertId });
   } catch (err) {
     console.error('Create game error:', err.message);
@@ -48,10 +54,7 @@ router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['Por
 // GET /api/clubs/:clubId/teams/:teamId/games/:gameId
 router.get('/:gameId', requireAuth, requireClubAccess, async (req, res) => {
   try {
-    const [rows] = await pool.execute(
-      'SELECT g.*, v.name AS venue_name, v.street AS venue_street, v.house_number AS venue_house_number, v.zip_code AS venue_zip_code, v.city AS venue_city FROM games g LEFT JOIN venues v ON g.venue_id = v.id WHERE g.id = ? AND g.team_id = ?',
-      [req.params.gameId, req.params.teamId]
-    );
+    const rows = await gameRepository.findGameById(req.params.gameId, req.params.teamId);
     if (rows.length === 0) {
       return res.status(404).json({ status: 'error', message: 'Spiel nicht gefunden.' });
     }
@@ -73,10 +76,16 @@ router.put('/:gameId', requireAuth, validateCsrf, requireClubAccess, requireRole
     return res.status(400).json({ status: 'error', message: 'Titel ist erforderlich.' });
   }
   try {
-    const [result] = await pool.execute(
-      'UPDATE games SET title = ?, date = ?, kickoff_time = ?, meeting_time = ?, info = ?, location_text = ?, venue_id = ?, opponent = ? WHERE id = ? AND team_id = ?',
-      [title.trim(), date || null, kickoff_time || null, meeting_time || null, info || null, location_text || null, venue_id || null, opponent || null, req.params.gameId, req.params.teamId]
-    );
+    const result = await gameRepository.updateGame(req.params.gameId, {
+      title: title.trim(),
+      date,
+      kickoff_time,
+      meeting_time,
+      info,
+      location_text,
+      venue_id,
+      opponent,
+    }, req.params.teamId);
     if (result.affectedRows === 0) {
       return res.status(404).json({ status: 'error', message: 'Spiel nicht gefunden.' });
     }
@@ -91,10 +100,7 @@ router.put('/:gameId', requireAuth, validateCsrf, requireClubAccess, requireRole
 router.put('/:gameId/result', requireAuth, validateCsrf, requireClubAccess, requireRole(['PortalAdmin', 'VereinsAdmin', 'Trainer']), async (req, res) => {
   const { result_markdown } = req.body || {};
   try {
-    const [result] = await pool.execute(
-      'UPDATE games SET result_markdown = ? WHERE id = ? AND team_id = ?',
-      [result_markdown || null, req.params.gameId, req.params.teamId]
-    );
+    const result = await gameRepository.updateGameResult(req.params.gameId, result_markdown, req.params.teamId);
     if (result.affectedRows === 0) {
       return res.status(404).json({ status: 'error', message: 'Spiel nicht gefunden.' });
     }
@@ -108,7 +114,7 @@ router.put('/:gameId/result', requireAuth, validateCsrf, requireClubAccess, requ
 // DELETE /api/clubs/:clubId/teams/:teamId/games/:gameId
 router.delete('/:gameId', requireAuth, validateCsrf, requireClubAccess, requireRole(['PortalAdmin', 'VereinsAdmin', 'Trainer']), async (req, res) => {
   try {
-    const [result] = await pool.execute('DELETE FROM games WHERE id = ? AND team_id = ?', [req.params.gameId, req.params.teamId]);
+    const result = await gameRepository.deleteGame(req.params.gameId, req.params.teamId);
     if (result.affectedRows === 0) {
       return res.status(404).json({ status: 'error', message: 'Spiel nicht gefunden.' });
     }

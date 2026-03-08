@@ -1,7 +1,7 @@
 'use strict';
 
 const express = require('express');
-const { pool } = require('../db');
+const venueRepository = require('../repositories/venueRepository');
 const { requireAuth, requireRole, requireClubAccess, validateCsrf } = require('../middleware/auth');
 
 const router = express.Router({ mergeParams: true });
@@ -9,10 +9,7 @@ const router = express.Router({ mergeParams: true });
 // GET /api/clubs/:clubId/venues
 router.get('/', requireAuth, requireClubAccess, async (req, res) => {
   try {
-    const [venues] = await pool.execute(
-      'SELECT id, name, zip_code, street, house_number, city, link, google_maps_link, created_at FROM venues WHERE club_id = ? ORDER BY name',
-      [req.params.clubId]
-    );
+    const venues = await venueRepository.findVenuesByClubId(req.params.clubId);
     return res.json({ status: 'ok', venues });
   } catch (err) {
     console.error('List venues error:', err.message);
@@ -27,10 +24,15 @@ router.post('/', requireAuth, validateCsrf, requireClubAccess, requireRole(['Por
     return res.status(400).json({ status: 'error', message: 'Name ist erforderlich.' });
   }
   try {
-    const [result] = await pool.execute(
-      'INSERT INTO venues (name, zip_code, street, house_number, city, link, google_maps_link, club_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [name.trim(), zip_code || null, street || null, house_number || null, city || null, link || null, google_maps_link || null, req.params.clubId]
-    );
+    const result = await venueRepository.createVenue(req.params.clubId, {
+      name: name.trim(),
+      zip_code,
+      street,
+      house_number,
+      city,
+      link,
+      google_maps_link,
+    });
     return res.status(201).json({ status: 'ok', venueId: result.insertId });
   } catch (err) {
     console.error('Create venue error:', err.message);
@@ -45,10 +47,15 @@ router.put('/:venueId', requireAuth, validateCsrf, requireClubAccess, requireRol
     return res.status(400).json({ status: 'error', message: 'Name ist erforderlich.' });
   }
   try {
-    const [result] = await pool.execute(
-      'UPDATE venues SET name = ?, zip_code = ?, street = ?, house_number = ?, city = ?, link = ?, google_maps_link = ? WHERE id = ? AND club_id = ?',
-      [name.trim(), zip_code || null, street || null, house_number || null, city || null, link || null, google_maps_link || null, req.params.venueId, req.params.clubId]
-    );
+    const result = await venueRepository.updateVenue(req.params.venueId, {
+      name: name.trim(),
+      zip_code,
+      street,
+      house_number,
+      city,
+      link,
+      google_maps_link,
+    }, req.params.clubId);
     if (result.affectedRows === 0) {
       return res.status(404).json({ status: 'error', message: 'Spielstätte nicht gefunden.' });
     }
@@ -62,7 +69,7 @@ router.put('/:venueId', requireAuth, validateCsrf, requireClubAccess, requireRol
 // DELETE /api/clubs/:clubId/venues/:venueId
 router.delete('/:venueId', requireAuth, validateCsrf, requireClubAccess, requireRole(['PortalAdmin', 'VereinsAdmin']), async (req, res) => {
   try {
-    const [result] = await pool.execute('DELETE FROM venues WHERE id = ? AND club_id = ?', [req.params.venueId, req.params.clubId]);
+    const result = await venueRepository.deleteVenue(req.params.venueId, req.params.clubId);
     if (result.affectedRows === 0) {
       return res.status(404).json({ status: 'error', message: 'Spielstätte nicht gefunden.' });
     }

@@ -13,6 +13,7 @@ let notifInterval = null;
 let appInitialized = false;
 let pendingInviteCode = null;
 let pendingInviteData = null;
+let previousView = 'dashboard';
 
 // --- DB status ---
 fetch('/api/db-status')
@@ -328,6 +329,8 @@ function handlePendingInvite() {
 }
 
 function navigateTo(view) {
+  previousView = document.querySelector('.app-view.active') ?
+    (document.querySelector('.app-view.active').id.replace('view-', '')) : 'dashboard';
   document.querySelectorAll('.app-view').forEach(function(v) { v.classList.remove('active'); });
   var el = document.getElementById('view-' + view);
   if (el) el.classList.add('active');
@@ -341,6 +344,8 @@ function navigateTo(view) {
   switch (view) {
     case 'dashboard': loadDashboard(); break;
     case 'club': loadClubData(); break;
+    case 'teamverwaltung': loadTeamverwaltung(); break;
+    case 'activities': loadActivities(); break;
     case 'messages': loadMessages(); break;
     case 'notifications': loadNotifications(); break;
   }
@@ -391,6 +396,7 @@ function loadClubs() {
     clubs = data.clubs || data || [];
     isPortalAdmin = !!data.isPortalAdmin;
     buildClubTabs();
+    updateNavVisibility();
     if (clubs.length > 0 && !currentClubId) {
       selectClub(getId(clubs[0]));
     } else if (currentClubId) {
@@ -418,6 +424,25 @@ function buildClubTabs() {
   });
 }
 
+function updateNavVisibility() {
+  var navClubBtn = document.getElementById('nav-club-btn');
+  var navTeamBtn = document.getElementById('nav-teamverwaltung-btn');
+  var navActBtn = document.getElementById('nav-activities-btn');
+
+  // Compute visibility from the currently selected club's role
+  var currentClub = clubs.find(function(c) { return getId(c) == currentClubId; });
+  var clubRole = currentClub ? currentClub.role : null;
+
+  // Vereinsverwaltung: only PortalAdmin
+  if (navClubBtn) navClubBtn.style.display = isPortalAdmin ? '' : 'none';
+
+  // Teamverwaltung: VereinsAdmin or PortalAdmin (for the selected club)
+  if (navTeamBtn) navTeamBtn.style.display = (isPortalAdmin || clubRole === 'VereinsAdmin') ? '' : 'none';
+
+  // Aktivitätsverwaltung: Trainer, VereinsAdmin, or PortalAdmin (for the selected club)
+  if (navActBtn) navActBtn.style.display = (isPortalAdmin || clubRole === 'Trainer' || clubRole === 'VereinsAdmin') ? '' : 'none';
+}
+
 function selectClub(clubId) {
   currentClubId = clubId;
   currentTeamId = null;
@@ -427,6 +452,7 @@ function selectClub(clubId) {
   });
   var club = clubs.find(function(c) { return getId(c) == clubId; });
   document.getElementById('nav-club-name').textContent = club ? club.name : '';
+  updateNavVisibility();
   navigateTo('dashboard');
 }
 
@@ -562,7 +588,7 @@ function loadClubData() {
   api('/api/clubs/' + currentClubId).then(function(data) {
     var club = data.club || data;
     document.getElementById('club-name').textContent = club.name || 'Verein';
-    var isAdmin = club.role === 'VereinsAdmin' || club.isAdmin;
+    var isAdmin = club.role === 'VereinsAdmin' || club.role === 'PortalAdmin' || club.isAdmin;
     var isTrainer = club.role === 'Trainer';
     document.getElementById('btn-edit-club').style.display = isAdmin ? '' : 'none';
     document.getElementById('club-logo-upload').style.display = isAdmin ? '' : 'none';
@@ -772,7 +798,7 @@ function showAddVenueModal() {
       link: document.getElementById('modal-venue-link').value.trim() || undefined,
       google_maps_link: document.getElementById('modal-venue-gmaps').value.trim() || undefined,
     } }).then(function() {
-      closeModal(); loadVenues();
+      closeModal(); loadVenues(); loadTvVenues();
     }).catch(function(e) { alert('Fehler: ' + (e.message || 'Fehler')); });
   });
 }
@@ -808,7 +834,7 @@ function showEditVenueModal(venueId) {
       link: document.getElementById('modal-venue-link').value.trim() || undefined,
       google_maps_link: document.getElementById('modal-venue-gmaps').value.trim() || undefined,
     } }).then(function() {
-      closeModal(); loadVenues();
+      closeModal(); loadVenues(); loadTvVenues();
     }).catch(function(e) { alert('Fehler: ' + (e.message || 'Fehler')); });
   });
 }
@@ -1033,21 +1059,240 @@ function renderTrainingForm(venueOpts) {
   showModal('Training hinzufügen',
     '<div class="app-form">' +
     '<div class="form-group"><label>Titel</label><input type="text" id="modal-training-title" value="Training"/></div>' +
-    '<div class="form-group"><label>Datum &amp; Uhrzeit</label><input type="datetime-local" id="modal-training-date"/></div>' +
+    '<div class="form-group"><label>Datum</label><input type="date" id="modal-training-date"/></div>' +
+    '<div class="form-group"><label>Uhrzeit</label><input type="time" id="modal-training-time"/></div>' +
     (venueOpts ? '<div class="form-group"><label>Spielstätte</label><select id="modal-training-venue">' + venueOpts + '</select></div>' : '') +
+    '<div class="form-group"><label>Ort (Freitext, alternativ zur Spielstätte)</label><input type="text" id="modal-training-location-text"/></div>' +
     '<button class="btn btn-primary" id="modal-training-submit">Erstellen</button></div>');
   document.getElementById('modal-training-submit').addEventListener('click', function() {
     var title = document.getElementById('modal-training-title').value.trim() || 'Training';
     var date = document.getElementById('modal-training-date').value;
     if (!date) { alert('Bitte Datum angeben.'); return; }
-    var body = { title: title, date: date };
+    var body = {
+      title: title,
+      date: date,
+      time: document.getElementById('modal-training-time').value.trim(),
+      location_text: document.getElementById('modal-training-location-text').value.trim()
+    };
     var venueEl = document.getElementById('modal-training-venue');
-    if (venueEl && venueEl.value) body.venueId = venueEl.value;
+    if (venueEl && venueEl.value) body.venue_id = venueEl.value;
     api('/api/clubs/' + currentClubId + '/teams/' + currentTeamId + '/trainings', {
       method: 'POST', body: body
     }).then(function() { closeModal(); loadTeam(currentSportId, currentTeamId); })
       .catch(function(e) { alert('Fehler: ' + (e.message || 'Fehler')); });
   });
+}
+
+// --- Teamverwaltung ---
+function loadTeamverwaltung() {
+  if (!currentClubId) return;
+  loadTvSports();
+  loadTvVenues();
+}
+
+function loadTvSports() {
+  if (!currentClubId) return;
+  api('/api/clubs/' + currentClubId + '/sports').then(function(data) {
+    var sports = data.sports || data || [];
+    var container = document.getElementById('tv-sports-list');
+    if (sports.length === 0) {
+      container.innerHTML = '<p style="color:#888">Keine Sportarten vorhanden</p>';
+      return;
+    }
+
+    function renderSports(sportsWithTeams) {
+      container.innerHTML = '';
+      sportsWithTeams.forEach(function(sp) {
+        var div = document.createElement('div');
+        div.style.marginBottom = '0.75rem';
+        var teams = sp.teams || [];
+        var teamHtml = '<ul class="item-list">';
+        if (teams.length === 0) {
+          teamHtml += '<li style="color:#888">Keine Teams</li>';
+        } else {
+          teams.forEach(function(t) {
+            teamHtml += '<li><span>' + escHtml(t.name) + '</span>' +
+              '<button class="btn btn-sm btn-secondary" data-sport="' + getId(sp) + '" data-team="' + getId(t) + '">Öffnen</button></li>';
+          });
+        }
+        teamHtml += '</ul>';
+        div.innerHTML = '<div class="section-header" style="margin-bottom:0.25rem">' +
+          '<strong>' + escHtml(sp.name) + '</strong>' +
+          '<button class="btn btn-sm btn-primary" data-add-team="' + getId(sp) + '">+ Team</button></div>' + teamHtml;
+        div.querySelectorAll('[data-team]').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            loadTeam(btn.dataset.sport, btn.dataset.team);
+          });
+        });
+        div.querySelector('[data-add-team]').addEventListener('click', function() {
+          showAddTeamModal(getId(sp));
+        });
+        container.appendChild(div);
+      });
+    }
+
+    // If sports already include teams (e.g. mock server), render directly.
+    var needsTeamFetch = sports.some(function(sp) {
+      return !Array.isArray(sp.teams);
+    });
+
+    if (!needsTeamFetch) {
+      renderSports(sports);
+      return;
+    }
+
+    // Otherwise, fetch teams per sport from the dedicated endpoint.
+    Promise.all(sports.map(function(sp) {
+      if (Array.isArray(sp.teams)) {
+        return Promise.resolve(sp);
+      }
+      return api('/api/clubs/' + currentClubId + '/sports/' + getId(sp) + '/teams')
+        .then(function(teamData) {
+          var teams = teamData.teams || teamData || [];
+          sp.teams = teams;
+          return sp;
+        })
+        .catch(function() {
+          // On error, treat as having no teams so UI still renders.
+          sp.teams = [];
+          return sp;
+        });
+    })).then(function(sportsWithTeams) {
+      renderSports(sportsWithTeams);
+    }).catch(function() {
+      document.getElementById('tv-sports-list').innerHTML = '<p style="color:#c00">Fehler beim Laden</p>';
+    });
+  }).catch(function() {
+    document.getElementById('tv-sports-list').innerHTML = '<p style="color:#c00">Fehler beim Laden</p>';
+  });
+}
+
+function loadTvVenues() {
+  if (!currentClubId) return;
+  api('/api/clubs/' + currentClubId + '/venues').then(function(data) {
+    var venues = data.venues || data || [];
+    venuesCache = venues;
+    var list = document.getElementById('tv-venues-list');
+    if (venues.length === 0) {
+      list.innerHTML = '<li style="color:#888">Keine Spielstätten</li>';
+      return;
+    }
+    list.innerHTML = '';
+    venues.forEach(function(v) {
+      var li = document.createElement('li');
+      var addrParts = [v.street, v.house_number].filter(Boolean).join(' ');
+      var cityParts = [v.zip_code, v.city].filter(Boolean).join(' ');
+      var fullAddr = [addrParts, cityParts].filter(Boolean).join(', ');
+      li.innerHTML = '<span>' + escHtml(v.name) + (fullAddr ? ' – ' + escHtml(fullAddr) : '') + '</span><div></div>';
+      var editBtn = document.createElement('button');
+      editBtn.className = 'btn btn-sm btn-secondary';
+      editBtn.textContent = '✎';
+      editBtn.addEventListener('click', function() { showEditVenueModal(getId(v)); });
+      var delBtn = document.createElement('button');
+      delBtn.className = 'btn btn-sm btn-danger';
+      delBtn.textContent = '✕';
+      delBtn.style.marginLeft = '0.25rem';
+      delBtn.addEventListener('click', function() { deleteVenue(getId(v)); });
+      li.querySelector('div').appendChild(editBtn);
+      li.querySelector('div').appendChild(delBtn);
+      list.appendChild(li);
+    });
+  }).catch(function() {
+    document.getElementById('tv-venues-list').innerHTML = '<li style="color:#c00">Fehler</li>';
+  });
+}
+
+// --- Aktivitätsverwaltung ---
+function loadActivities() {
+  if (!currentClubId) return;
+  var sel = document.getElementById('activities-team-select');
+  sel.innerHTML = '<option value="">– Team wählen –</option>';
+
+  api('/api/clubs/' + currentClubId + '/sports').then(function(data) {
+    var sports = data.sports || data || [];
+
+    function populateSelect(sportsWithTeams) {
+      sportsWithTeams.forEach(function(sp) {
+        var teams = sp.teams || [];
+        teams.forEach(function(t) {
+          var opt = document.createElement('option');
+          opt.value = getId(sp) + ':' + getId(t);
+          opt.textContent = sp.name + ' – ' + t.name;
+          sel.appendChild(opt);
+        });
+      });
+    }
+
+    // If sports already include teams (e.g. mock server), populate directly.
+    var needsTeamFetch = sports.some(function(sp) {
+      return !Array.isArray(sp.teams);
+    });
+
+    if (!needsTeamFetch) {
+      populateSelect(sports);
+      return;
+    }
+
+    // Otherwise, fetch teams per sport from the dedicated endpoint.
+    Promise.all(sports.map(function(sp) {
+      if (Array.isArray(sp.teams)) {
+        return Promise.resolve(sp);
+      }
+      return api('/api/clubs/' + currentClubId + '/sports/' + getId(sp) + '/teams')
+        .then(function(teamData) {
+          sp.teams = teamData.teams || teamData || [];
+          return sp;
+        })
+        .catch(function() {
+          sp.teams = [];
+          return sp;
+        });
+    })).then(function(sportsWithTeams) {
+      populateSelect(sportsWithTeams);
+    });
+  }).catch(function() {});
+
+  document.getElementById('activities-content').style.display = 'none';
+}
+
+function loadActivitiesForTeam(sportId, teamId) {
+  currentSportId = sportId;
+  currentTeamId = teamId;
+  document.getElementById('activities-content').style.display = '';
+
+  var gamesList = document.getElementById('activities-games-list');
+  var trainingsList = document.getElementById('activities-trainings-list');
+  gamesList.innerHTML = trainingsList.innerHTML = '<li>Laden…</li>';
+
+  api('/api/clubs/' + currentClubId + '/teams/' + teamId + '/games').then(function(data) {
+    var games = data.games || data || [];
+    gamesList.innerHTML = games.length === 0 ? '<li style="color:#888">Keine Spiele</li>' : '';
+    games.forEach(function(g) {
+      var li = document.createElement('li');
+      li.innerHTML = '<span>' + fmtDateTime(g.date || g.startDate) + ' – ' +
+        escHtml(g.opponent || g.title || 'Spiel') + '</span>';
+      var btn = document.createElement('button');
+      btn.className = 'btn btn-sm btn-secondary'; btn.textContent = 'Details';
+      btn.addEventListener('click', function() { loadEvent('games', getId(g)); });
+      li.appendChild(btn);
+      gamesList.appendChild(li);
+    });
+  }).catch(function() { gamesList.innerHTML = '<li style="color:#c00">Fehler</li>'; });
+
+  api('/api/clubs/' + currentClubId + '/teams/' + teamId + '/trainings').then(function(data) {
+    var trainings = data.trainings || data || [];
+    trainingsList.innerHTML = trainings.length === 0 ? '<li style="color:#888">Keine Trainings</li>' : '';
+    trainings.forEach(function(t) {
+      var li = document.createElement('li');
+      li.innerHTML = '<span>' + fmtDateTime(t.date || t.startDate) + ' – ' +
+        escHtml(t.title || 'Training') + '</span>';
+      var btn = document.createElement('button');
+      btn.className = 'btn btn-sm btn-secondary'; btn.textContent = 'Details';
+      btn.addEventListener('click', function() { loadEvent('trainings', getId(t)); });
+      li.appendChild(btn);
+      trainingsList.appendChild(li);
+    });
+  }).catch(function() { trainingsList.innerHTML = '<li style="color:#c00">Fehler</li>'; });
 }
 
 // --- Event Detail ---
@@ -1325,7 +1570,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-add-sport').addEventListener('click', showAddSportModal);
   document.getElementById('btn-add-venue').addEventListener('click', showAddVenueModal);
   document.getElementById('btn-create-invitation').addEventListener('click', showInvitationModal);
-  document.getElementById('btn-back-club').addEventListener('click', function() { navigateTo('club'); });
+  document.getElementById('btn-back-club').addEventListener('click', function() {
+    var validViews = ['teamverwaltung', 'activities', 'club'];
+    navigateTo(validViews.indexOf(previousView) !== -1 ? previousView : 'dashboard');
+  });
   document.getElementById('btn-add-player').addEventListener('click', showAddPlayerModal);
   document.getElementById('btn-add-trainer').addEventListener('click', showAddTrainerModal);
   document.getElementById('btn-add-game').addEventListener('click', showAddGameModal);
@@ -1352,6 +1600,24 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('modal-overlay').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
   });
+
+  // Teamverwaltung listeners
+  document.getElementById('btn-tv-add-sport').addEventListener('click', showAddSportModal);
+  document.getElementById('btn-tv-add-venue').addEventListener('click', showAddVenueModal);
+  document.getElementById('btn-tv-create-invitation').addEventListener('click', function() { showInvitationModal(); });
+
+  // Aktivitätsverwaltung listeners
+  document.getElementById('activities-team-select').addEventListener('change', function() {
+    var val = this.value;
+    if (!val) {
+      document.getElementById('activities-content').style.display = 'none';
+      return;
+    }
+    var parts = val.split(':');
+    loadActivitiesForTeam(parts[0], parts[1]);
+  });
+  document.getElementById('btn-act-add-game').addEventListener('click', showAddGameModal);
+  document.getElementById('btn-act-add-training').addEventListener('click', showAddTrainingModal);
 
   checkInviteCode();
   checkAuthStatus();
