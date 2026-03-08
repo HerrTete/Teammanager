@@ -63,7 +63,7 @@ function checkAuthStatus() {
           document.getElementById('invitation-notice').style.display = '';
         }
         if (data.pendingVerification) {
-          // Activate the register tab without triggering the [REDACTED]/reset side-effects of switchTab
+          // Activate the register tab without triggering the captcha/reset side-effects of switchTab
           document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === 'register'));
           document.getElementById('tab-login').classList.remove('active');
           document.getElementById('tab-register').classList.add('active');
@@ -84,19 +84,19 @@ function checkAuthStatus() {
 
 // --- CAPTCHA (also provides csrfToken) ---
 function loadCaptcha() {
-  fetch('/api/auth/[REDACTED]')
+  fetch('/api/auth/captcha')
     .then(r => r.json())
     .then(data => {
-      document.getElementById('[REDACTED]-question').textContent = data.question;
-      document.getElementById('[REDACTED]-answer').value = '';
+      document.getElementById('captcha-question').textContent = data.question;
+      document.getElementById('captcha-answer').value = '';
       if (data.csrfToken) csrfToken = data.csrfToken;
     })
     .catch(() => {
-      document.getElementById('[REDACTED]-question').textContent = 'Fehler beim Laden.';
+      document.getElementById('captcha-question').textContent = 'Fehler beim Laden.';
     });
 }
 
-// --- Load CSRF token (used for login without [REDACTED]) ---
+// --- Load CSRF token (used for login without captcha) ---
 function loadCsrfToken() {
   return fetch('/api/auth/csrf-token')
     .then(r => r.json())
@@ -154,11 +154,11 @@ function doRegister(e) {
   const username = document.getElementById('reg-user').value;
   const email = document.getElementById('reg-email').value;
   const password = document.getElementById('reg-pw').value;
-  const [REDACTED] = document.getElementById('[REDACTED]-answer').value;
+  const captcha = document.getElementById('captcha-answer').value;
   fetch('/api/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-    body: JSON.stringify({ username, email, password, [REDACTED] }),
+    body: JSON.stringify({ username, email, password, captcha }),
   })
     .then(r => r.json())
     .then(data => {
@@ -1489,7 +1489,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('register-form').addEventListener('submit', doRegister);
   document.getElementById('verify-form').addEventListener('submit', doVerifyEmail);
   document.getElementById('logout-btn').addEventListener('click', logout);
-  document.getElementById('[REDACTED]-reload').addEventListener('click', loadCaptcha);
+  document.getElementById('captcha-reload').addEventListener('click', loadCaptcha);
 
   // --- SPA event listeners ---
   document.querySelectorAll('#app-nav .nav-btn').forEach(function(btn) {
