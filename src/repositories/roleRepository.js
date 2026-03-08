@@ -46,14 +46,13 @@ function computeHighestRole(roles) {
 
 async function getHighestRolesForClubs(userId, clubIds) {
   const allRoles = await findUserRoles(userId);
-  const hasPortalAdmin = allRoles.some((r) => r.role === 'PortalAdmin');
   const result = {};
   for (const clubId of clubIds) {
     const clubRoles = allRoles.filter((r) => {
       if (r.role === 'PortalAdmin') return true;
       return r.club_id === parseInt(clubId, 10);
     });
-    result[clubId] = clubRoles.length > 0 ? computeHighestRole(clubRoles) : (hasPortalAdmin ? 'PortalAdmin' : null);
+    result[clubId] = clubRoles.length > 0 ? computeHighestRole(clubRoles) : null;
   }
   return result;
 }
